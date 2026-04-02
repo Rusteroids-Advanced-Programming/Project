@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
-    "target": "ES2015",         /* Specifica la versione di JavaScript generata */
+    "target": "ES2015",
     "module": "commonjs",
-    "outDir": "./dist",         /* Dove finisce il file index.js */
+    "outDir": "./dist",
     "lib": [
-      "ES2015",                 /* Include le definizioni per Promise */
-      "DOM"                     /* Include le definizioni per document e fetch */
+      "ES2015",
+      "DOM"
     ],
     "strict": true,
     "esModuleInterop": true,
