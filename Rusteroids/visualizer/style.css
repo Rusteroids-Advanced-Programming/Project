@@ -1,0 +1,167 @@
+body {
+    background-color: #0b0e14;
+    color: white;
+    font-family: sans-serif;
+    margin: 0;
+    overflow-x: hidden;
+}
+
+#galaxy-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 50px;
+    justify-content: center;
+}
+
+.planet-sprite {
+    width: 60px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.planet-sprite:hover {
+    transform: scale(1.2);
+}
+
+.planet-sprite.dead {
+    filter: grayscale(1) brightness(0.5);
+}
+
+
+.details-box {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 250px;
+    background: rgba(0, 0, 0, 0.85);
+    border: 2px solid #4a90e2;
+    padding: 15px;
+    border-radius: 8px;
+    z-index: 100;
+}
+
+.hidden { display: none; }
+
+.resource-section {
+    margin: 15px 0;
+}
+
+.badge-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: white;
+}
+
+.badge.base {
+    background-color: #3498db;
+    border: 1px solid #2980b9;
+}
+
+.badge.complex {
+    background-color: #9b59b6;
+    border: 1px solid #8e44ad;
+}
+
+.status-ready {
+    color: #f1c40f;
+    font-weight: bold;
+    text-shadow: 0 0 5px rgba(241, 196, 15, 0.5);
+}
+
+.status-empty {
+    color: #95a5a6;
+    font-style: italic;
+}
+
+.log-panel {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    width: 350px;
+    height: 200px;
+    background: rgba(0, 0, 0, 0.85);
+    border: 1px solid #333;
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+}
+
+.log-header {
+    background: #222;
+    padding: 5px;
+    font-weight: bold;
+    border-bottom: 1px solid #444;
+    color: #aaa;
+}
+
+.log-content {
+    padding: 10px;
+    overflow-y: hidden;
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.log-entry {
+    margin-bottom: 4px;
+    border-left: 2px solid #00ff00;
+    padding-left: 5px;
+}
+
+.planet-wrapper {
+    display: inline-block;
+    margin: 20px;
+    vertical-align: middle;
+    text-align: center;
+}
+
+.explorer-badge {
+    background: rgba(41, 128, 185, 0.9);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: bold;
+    white-space: nowrap;
+    border: 1px solid white;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    z-index: 10;
+    pointer-events: none;
+}
+
+.explorer-detail-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-left: 3px solid #3498db;
+    padding: 8px;
+    margin-top: 10px;
+    border-radius: 4px;
+}
+
+.explorer-header {
+    font-weight: bold;
+    color: #3498db;
+    margin-bottom: 4px;
+}
+
+.explorer-bag {
+    font-size: 0.9em;
+    color: #ccc;
+}
+
+.no-data {
+    font-style: italic;
+    color: #777;
+}

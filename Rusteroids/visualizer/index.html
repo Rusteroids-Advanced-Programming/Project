@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Rusteroids</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="planet-details" class="details-box hidden">
+    <h2 id="det-name">-</h2>
+    <p>Stato: <span id="det-alive">-</span></p>
+    <p>Tipo: <span id="det-type">-</span></p>
+    <p>Celle di Energia: <span id="det-energy">-</span></p>
+
+    <div class="resource-section">
+        <strong>Estraibili:</strong>
+        <div id="det-res-base" class="badge-container"></div>
+    </div>
+
+    <div class="resource-section">
+        <strong>Craftabili:</strong>
+        <div id="det-res-complex" class="badge-container"></div>
+    </div>
+    <p><strong>Difesa Razzo:</strong> <span id="det-rockets-ready">-</span></p>
+    <p>Razzi usati: <span id="det-rockets">-</span></p>
+    <p>Vicini: <span id="det-neighbors">-</span></p>
+</div>
+
+<div id="log-container" class="log-panel">
+    <div class="log-header">ORCHESTRATOR LOGS</div>
+    <div id="log-content" class="log-content"></div>
+</div>
+
+<div class="details-section">
+    <div id="det-explorers-list"></div>
+</div>
+
+<main id="galaxy-container">
+</main>
+
+<script src="dist/index.js"></script>
+</body>
+</html>

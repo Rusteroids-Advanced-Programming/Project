@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2015",         /* Specifica la versione di JavaScript generata */
+    "module": "commonjs",
+    "outDir": "./dist",         /* Dove finisce il file index.js */
+    "lib": [
+      "ES2015",                 /* Include le definizioni per Promise */
+      "DOM"                     /* Include le definizioni per document e fetch */
+    ],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["index.ts"]
+}
