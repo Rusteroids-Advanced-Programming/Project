@@ -1,5 +1,4 @@
 use crate::modules::manual_explorer::bag_type::{BagType, DummyBag};
-use crate::modules::manual_explorer::explorer_ai::ExplorerAI;
 use common_game::components::resource::{
     BasicResourceType, ComplexResourceRequest, ComplexResourceType,
 };

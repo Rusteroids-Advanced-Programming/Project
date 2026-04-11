@@ -1,8 +1,6 @@
 // use rusteroid_planet::from_generic_type_to_basic;
 use crate::modules::manual_explorer::manual_explorer::ManualExplorer;
-use common_game::components::resource::{
-    BasicResourceType, ComplexResourceRequest, ComplexResourceType,
-};
+use common_game::components::resource::{BasicResource, BasicResourceType, ComplexResource, ComplexResourceRequest, ComplexResourceType, GenericResource};
 use common_game::protocols::orchestrator_explorer::ExplorerToOrchestrator;
 use common_game::protocols::planet_explorer::{ExplorerToPlanet, PlanetToExplorer};
 use common_game::utils::ID;
@@ -11,17 +9,22 @@ use std::thread::sleep;
 use std::time::Duration;
 
 pub trait ExplorerAI {
-    fn start_ai(&self);
-    fn reset_ai(&self);
-    fn kill(&self);
-    fn move_to_planet(&self, to_planet: Option<Sender<ExplorerToPlanet>>, planet_id: ID);
+    fn start_ai <F> (&self, custom_handler: F) where F : Fn(&Self);
+    fn reset_ai <F> (&self, custom_handler: F) where F : Fn(&Self);
+    fn kill <F> (&self, custom_handler: F) where F : Fn(&Self);
+    fn move_to_planet <F> (
+        &self,
+        to_planet: Option<Sender<ExplorerToPlanet>>,
+        planet_id: ID,
+        custom_handler: F
+    ) where F : Fn(&Self);
     fn get_current_planet(&self);
     fn give_supported_resources(&self);
     fn ask_supported_resources(&self);
     fn give_combinations(&mut self);
     fn ask_combinations(&self);
-    fn generate_resource(&self, to_generate: BasicResourceType);
-    fn combine_resource(&self, to_generate: ComplexResourceType);
+    fn generate_resource <F> (&self, to_generate: BasicResourceType, custom_handler: F) where F : Fn(&Self, &Option<&BasicResource>);
+    fn combine_resource <F> (&self, to_generate: ComplexResourceType, custom_handler: F) where F : Fn(&Self, &Result<&ComplexResource, &(String, GenericResource, GenericResource)>);
     fn get_bag(&self);
     fn ask_for_neighbours(&self);
     fn set_neighbours(&self, neighbors: Vec<ID>);
@@ -34,32 +37,38 @@ pub trait ExplorerAI {
 }
 
 impl ExplorerAI for ManualExplorer {
-    fn start_ai(&self) {
+    fn start_ai <F> (&self, custom_handler: F) where F: Fn(&Self) {
         println!("AI STARTED {}", self.explorer_id);
         self.to_orchestrator
             .send(ExplorerToOrchestrator::StartExplorerAIResult {
                 explorer_id: self.explorer_id,
             })
             .unwrap();
+
+        custom_handler(self);
     }
 
-    fn reset_ai(&self) {
+    fn reset_ai <F> (&self, custom_handler: F) where F: Fn(&Self) {
         self.to_orchestrator
             .send(ExplorerToOrchestrator::ResetExplorerAIResult {
                 explorer_id: self.explorer_id,
             })
             .unwrap();
+
+        custom_handler(self);
     }
 
-    fn kill(&self) {
+    fn kill <F> (&self, custom_handler: F) where F: Fn(&Self) {
         self.to_orchestrator
             .send(ExplorerToOrchestrator::KillExplorerResult {
                 explorer_id: self.explorer_id,
             })
             .unwrap();
+
+        custom_handler(self);
     }
 
-    fn move_to_planet(&self, to_planet: Option<Sender<ExplorerToPlanet>>, planet_id: ID) {
+    fn move_to_planet <F> (&self, to_planet: Option<Sender<ExplorerToPlanet>>, planet_id: ID, custom_handler : F) where F : Fn(&Self){
         let mut to_planet_guard = self.to_planet.write().unwrap();
         let mut current_planet_guard = self.current_planet_id.write().unwrap();
         *to_planet_guard = to_planet;
@@ -86,6 +95,7 @@ impl ExplorerAI for ManualExplorer {
         //println!("after combinatiopns");
         self.ask_supported_resources();
         //println!("resourcces: {:?}", self.basic_resources)
+        custom_handler(&self)
     }
 
     fn get_current_planet(&self) {
@@ -172,7 +182,6 @@ impl ExplorerAI for ManualExplorer {
                 let msg = from_planet
                     .recv_timeout(Duration::from_millis(2000))
                     .unwrap(); // -> proviamo a mettere forzatamente il nostro pianeta e vedere se funziona( a patto che noi gestiamo bene questo messaggio)
-                //println!("FATTOASKEDDIOBELLO");
                 match msg {
                     PlanetToExplorer::SupportedCombinationResponse { combination_list } => {
                         let mut guard = self.combinations.write().unwrap();
@@ -184,7 +193,7 @@ impl ExplorerAI for ManualExplorer {
         }
     }
 
-    fn generate_resource(&self, to_generate: BasicResourceType) {
+    fn generate_resource <F> (&self, to_generate: BasicResourceType, custom_handler: F) where F: Fn(&Self, &Option<&BasicResource>) {
         let to_planet_guard = self.to_planet.read().unwrap();
         let from_planet_guard = self.from_planet.read().unwrap();
         if let Some(to_planet) = to_planet_guard.as_ref() {
@@ -198,15 +207,20 @@ impl ExplorerAI for ManualExplorer {
                 let msg = from_planet.recv().unwrap();
                 let result: Result<(), String>;
                 match msg {
-                    PlanetToExplorer::GenerateResourceResponse { resource } => match resource {
-                        Some(resource) => {
-                            println!("Generated basic resource: {:?}", resource);
-                            let mut bag_guard = self.bag.write().unwrap();
-                            bag_guard.add_basic_resource(resource);
-                            result = Ok(());
-                        }
-                        None => {
-                            result = Err(format!("Failed to gen {:?}", to_generate));
+                    PlanetToExplorer::GenerateResourceResponse { resource } => {
+                        let tmp = &resource.as_ref();
+                        custom_handler(self, tmp);
+
+                        match resource {
+                            Some(resource) => {
+                                println!("Generated basic resource: {:?}", resource);
+                                let mut bag_guard = self.bag.write().unwrap();
+                                bag_guard.add_basic_resource(resource);
+                                result = Ok(());
+                            }
+                            None => {
+                                result = Err(format!("Failed to gen {:?}", to_generate));
+                            }
                         }
                     },
                     msg => {
@@ -227,7 +241,7 @@ impl ExplorerAI for ManualExplorer {
         }
     }
 
-    fn combine_resource(&self, to_generate: ComplexResourceType) {
+    fn combine_resource <F> (&self, to_generate: ComplexResourceType, custom_handler: F) where F: Fn(&Self, &Result<&ComplexResource, &(String, GenericResource, GenericResource)>){
         let generate_request = self.get_complex_resource_request(to_generate);
         let to_planet_guard = self.to_planet.read().unwrap();
         let from_planet_guard = self.from_planet.read().unwrap();
@@ -243,6 +257,10 @@ impl ExplorerAI for ManualExplorer {
                 let result: Result<(), String>;
                 match msg {
                     PlanetToExplorer::CombineResourceResponse { complex_response } => {
+
+                        let tmp = &complex_response.as_ref();
+                        custom_handler(self, tmp);
+
                         match complex_response {
                             Ok(resource) => {
                                 let mut bag_guard = self.bag.write().unwrap();

@@ -1,6 +1,6 @@
-mod event_manager;
+pub(crate) mod event_manager;
 pub(crate) mod explorer_initializer;
-mod handler_explorer_ai;
+pub(crate) mod handler_explorer_ai;
 pub mod initializer;
 pub mod orchestator;
 pub(crate) mod orchestrator_ai;

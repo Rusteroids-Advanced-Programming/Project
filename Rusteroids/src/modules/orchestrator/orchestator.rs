@@ -27,9 +27,9 @@ pub enum Difficulty {
 impl Difficulty {
     pub fn get_ratio(&self) -> f64 {
         match self {
-            Difficulty::Easy => 0.1,
-            Difficulty::Medium => 0.2,
-            Difficulty::Hard => 0.3,
+            Difficulty::Easy => 0.001,
+            Difficulty::Medium => 0.005,
+            Difficulty::Hard => 0.01,
             Difficulty::Peaceful => 0.0,
         }
     }
