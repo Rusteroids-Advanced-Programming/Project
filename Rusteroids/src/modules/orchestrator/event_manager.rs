@@ -157,7 +157,7 @@ impl ExplorerListener {
                         .unwrap()
                         .insert(explorer_id, planet_id);
 
-                    *self.explorer.current_planet_id.write().unwrap() = planet_id;
+                    *self.explorer.base.current_planet_id.write().unwrap() = planet_id;
                 }
                 ExplorerToOrchestrator::BagContentResponse {
                     explorer_id: _,
@@ -199,14 +199,14 @@ impl ExplorerListener {
                 ExplorerToOrchestrator::KillExplorerResult { explorer_id } => {
                     // DA FIXARE NON VA UN CAZZO
 
-                    if let Ok(mut alive_lock) = self.explorer.alive.write() {
+                    if let Ok(mut alive_lock) = self.explorer.base.alive.write() {
                         *alive_lock = false;
                     }
 
                     let orch_guard = self.orch.read().unwrap();
 
                     if let Some(orch_explorer) = orch_guard.explorers.get(&explorer_id) {
-                        let mut alive_status = orch_explorer.alive.write().unwrap();
+                        let mut alive_status = orch_explorer.base.alive.write().unwrap();
                         *alive_status = false;
                     }
 

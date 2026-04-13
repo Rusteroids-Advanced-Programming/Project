@@ -7,24 +7,25 @@ use common_game::utils::ID;
 use crossbeam_channel::Sender;
 use std::thread::sleep;
 use std::time::Duration;
+use crate::modules::explorer_utils::explorer_base::ExplorerBase;
 
 pub trait ExplorerAI {
-    fn start_ai <F> (&self, custom_handler: F) where F : Fn(&Self);
-    fn reset_ai <F> (&self, custom_handler: F) where F : Fn(&Self);
-    fn kill <F> (&self, custom_handler: F) where F : Fn(&Self);
+    fn start_ai <F> (&self, custom_handler: F) where F : Fn();
+    fn reset_ai <F> (&self, custom_handler: F) where F : Fn();
+    fn kill <F> (&self, custom_handler: F) where F : Fn();
     fn move_to_planet <F> (
         &self,
         to_planet: Option<Sender<ExplorerToPlanet>>,
         planet_id: ID,
         custom_handler: F
-    ) where F : Fn(&Self);
+    ) where F : Fn();
     fn get_current_planet(&self);
     fn give_supported_resources(&self);
     fn ask_supported_resources(&self);
     fn give_combinations(&mut self);
     fn ask_combinations(&self);
-    fn generate_resource <F> (&self, to_generate: BasicResourceType, custom_handler: F) where F : Fn(&Self, &Option<&BasicResource>);
-    fn combine_resource <F> (&self, to_generate: ComplexResourceType, custom_handler: F) where F : Fn(&Self, &Result<&ComplexResource, &(String, GenericResource, GenericResource)>);
+    fn generate_resource <F> (&self, to_generate: BasicResourceType, custom_handler: F) where F : Fn(&Option<&BasicResource>);
+    fn combine_resource <F> (&self, to_generate: ComplexResourceType, custom_handler: F) where F : Fn(&Result<&ComplexResource, &(String, GenericResource, GenericResource)>);
     fn get_bag(&self);
     fn ask_for_neighbours(&self);
     fn set_neighbours(&self, neighbors: Vec<ID>);
@@ -36,8 +37,8 @@ pub trait ExplorerAI {
     ) -> Option<ComplexResourceRequest>;
 }
 
-impl ExplorerAI for ManualExplorer {
-    fn start_ai <F> (&self, custom_handler: F) where F: Fn(&Self) {
+impl ExplorerAI for ExplorerBase {
+    fn start_ai <F> (&self, custom_handler: F) where F: Fn() {
         println!("AI STARTED {}", self.explorer_id);
         self.to_orchestrator
             .send(ExplorerToOrchestrator::StartExplorerAIResult {
@@ -45,30 +46,30 @@ impl ExplorerAI for ManualExplorer {
             })
             .unwrap();
 
-        custom_handler(self);
+        custom_handler();
     }
 
-    fn reset_ai <F> (&self, custom_handler: F) where F: Fn(&Self) {
+    fn reset_ai <F> (&self, custom_handler: F) where F: Fn() {
         self.to_orchestrator
             .send(ExplorerToOrchestrator::ResetExplorerAIResult {
                 explorer_id: self.explorer_id,
             })
             .unwrap();
 
-        custom_handler(self);
+        custom_handler();
     }
 
-    fn kill <F> (&self, custom_handler: F) where F: Fn(&Self) {
+    fn kill <F> (&self, custom_handler: F) where F: Fn() {
         self.to_orchestrator
             .send(ExplorerToOrchestrator::KillExplorerResult {
                 explorer_id: self.explorer_id,
             })
             .unwrap();
 
-        custom_handler(self);
+        custom_handler();
     }
 
-    fn move_to_planet <F> (&self, to_planet: Option<Sender<ExplorerToPlanet>>, planet_id: ID, custom_handler : F) where F : Fn(&Self){
+    fn move_to_planet <F> (&self, to_planet: Option<Sender<ExplorerToPlanet>>, planet_id: ID, custom_handler : F) where F : Fn(){
         let mut to_planet_guard = self.to_planet.write().unwrap();
         let mut current_planet_guard = self.current_planet_id.write().unwrap();
         *to_planet_guard = to_planet;
@@ -95,7 +96,7 @@ impl ExplorerAI for ManualExplorer {
         //println!("after combinatiopns");
         self.ask_supported_resources();
         //println!("resourcces: {:?}", self.basic_resources)
-        custom_handler(&self)
+        custom_handler()
     }
 
     fn get_current_planet(&self) {
@@ -193,7 +194,7 @@ impl ExplorerAI for ManualExplorer {
         }
     }
 
-    fn generate_resource <F> (&self, to_generate: BasicResourceType, custom_handler: F) where F: Fn(&Self, &Option<&BasicResource>) {
+    fn generate_resource <F> (&self, to_generate: BasicResourceType, custom_handler: F) where F: Fn(&Option<&BasicResource>) {
         let to_planet_guard = self.to_planet.read().unwrap();
         let from_planet_guard = self.from_planet.read().unwrap();
         if let Some(to_planet) = to_planet_guard.as_ref() {
@@ -209,7 +210,7 @@ impl ExplorerAI for ManualExplorer {
                 match msg {
                     PlanetToExplorer::GenerateResourceResponse { resource } => {
                         let tmp = &resource.as_ref();
-                        custom_handler(self, tmp);
+                        custom_handler( tmp);
 
                         match resource {
                             Some(resource) => {
@@ -241,50 +242,52 @@ impl ExplorerAI for ManualExplorer {
         }
     }
 
-    fn combine_resource <F> (&self, to_generate: ComplexResourceType, custom_handler: F) where F: Fn(&Self, &Result<&ComplexResource, &(String, GenericResource, GenericResource)>){
+    fn combine_resource <F> (&self, to_generate: ComplexResourceType, custom_handler: F) where F: Fn(&Result<&ComplexResource, &(String, GenericResource, GenericResource)>){
         let generate_request = self.get_complex_resource_request(to_generate);
         let to_planet_guard = self.to_planet.read().unwrap();
         let from_planet_guard = self.from_planet.read().unwrap();
         if let Some(to_planet) = to_planet_guard.as_ref() {
-            to_planet
-                .send(ExplorerToPlanet::CombineResourceRequest {
-                    explorer_id: self.explorer_id,
-                    msg: generate_request.unwrap(),
-                })
-                .unwrap();
-            if let Some(from_planet) = from_planet_guard.as_ref() {
-                let msg = from_planet.recv().unwrap();
-                let result: Result<(), String>;
-                match msg {
-                    PlanetToExplorer::CombineResourceResponse { complex_response } => {
-
-                        let tmp = &complex_response.as_ref();
-                        custom_handler(self, tmp);
-
-                        match complex_response {
-                            Ok(resource) => {
-                                let mut bag_guard = self.bag.write().unwrap();
-                                bag_guard.add_complex_resource(resource);
-                                result = Ok(());
-                            }
-                            Err((_e, _res1, _res2)) => {
-                                result = Err("Couldn't combine resource".to_string());
-                                // self.bag.add_to_bag(ResourceType::Basic(from_generic_type_to_basic(res1).unwrap()));
-                                // self.bag.add_to_bag(ResourceType::Basic(from_generic_type_to_basic(res2).unwrap()));
-                            }
-                        }
-                    }
-                    _ => {
-                        result = Err("Couldn't combine resource".to_string());
-                    }
-                }
-
-                self.to_orchestrator
-                    .send(ExplorerToOrchestrator::CombineResourceResponse {
+            if let Some(generate_request) = generate_request {
+                to_planet
+                    .send(ExplorerToPlanet::CombineResourceRequest {
                         explorer_id: self.explorer_id,
-                        generated: result,
+                        msg: generate_request,
                     })
                     .unwrap();
+                if let Some(from_planet) = from_planet_guard.as_ref() {
+                    let msg = from_planet.recv().unwrap();
+                    let result: Result<(), String>;
+                    match msg {
+                        PlanetToExplorer::CombineResourceResponse { complex_response } => {
+
+                            let tmp = &complex_response.as_ref();
+                            custom_handler(tmp);
+
+                            match complex_response {
+                                Ok(resource) => {
+                                    let mut bag_guard = self.bag.write().unwrap();
+                                    bag_guard.add_complex_resource(resource);
+                                    result = Ok(());
+                                }
+                                Err((_e, _res1, _res2)) => {
+                                    result = Err("Couldn't combine resource".to_string());
+                                    // self.bag.add_to_bag(ResourceType::Basic(from_generic_type_to_basic(res1).unwrap()));
+                                    // self.bag.add_to_bag(ResourceType::Basic(from_generic_type_to_basic(res2).unwrap()));
+                                }
+                            }
+                        }
+                        _ => {
+                            result = Err("Couldn't combine resource".to_string());
+                        }
+                    }
+
+                    self.to_orchestrator
+                        .send(ExplorerToOrchestrator::CombineResourceResponse {
+                            explorer_id: self.explorer_id,
+                            generated: result,
+                        })
+                        .unwrap();
+                }
             }
         }
     }

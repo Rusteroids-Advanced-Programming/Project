@@ -149,7 +149,7 @@ async fn get_galaxy_status(State(orch): State<Arc<RwLock<Orchestrator>>>) -> Jso
 
     for (&exp_id, &planet_id) in explorer_snapshot.iter() {
         if let Some(explorer_obj) = orch_guard.explorers.get(&exp_id) {
-            let is_alive = *explorer_obj.alive.read().unwrap();
+            let is_alive = *explorer_obj.base.alive.read().unwrap();
 
             let bag_content = if is_alive {
                 let bag_guard = explorer_obj.dummy_bag.read().unwrap();

@@ -14,6 +14,7 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
+use crate::modules::explorer_utils::explorer::Explorer;
 
 #[allow(dead_code)]
 pub trait ExplorerInitializer {
@@ -57,17 +58,18 @@ impl ExplorerInitializer for Orchestrator {
             let spawn_planet = self.set_spawn_planet();
             println!("Spawn planet: {}", spawn_planet);
 
-            explorer.to_planet = RwLock::new(Some(
+            explorer.base.to_planet = RwLock::new(Some(
                 planet_channels_guard.get(&spawn_planet).unwrap().2.clone(),
             )); //crabtorio have problem whit ts. no initialization of the channels. ONly them are having this problem
-            explorer.from_planet = RwLock::new(Some(
+            explorer.base.from_planet = RwLock::new(Some(
                 self.explorer_channels.get(&expl_id).unwrap().3.clone(),
             ));
 
             let tmp = Arc::new(explorer);
             let tmp_clone = tmp.clone();
             let handle = thread::spawn(move || {
-                tmp_clone.run().unwrap_or(());
+                let tmp_clone2 = tmp_clone.clone();
+                tmp_clone.run(tmp_clone2).unwrap_or(());
             });
 
             self.explorer_planet
@@ -75,7 +77,6 @@ impl ExplorerInitializer for Orchestrator {
                 .unwrap()
                 .insert(expl_id, spawn_planet);
             // explorer.to_planet = RwLock::new(Some(self.planet_channels.get(&spawn_planet).unwrap().2.clone()));
-            //  println!("Dio4");
             //  explorer.from_planet = RwLock::new(Some(self.explorer_channels.get(&expl_id).unwrap().3.clone()));
             self.explorer_threads.insert(expl_id, handle);
             self.explorers.insert(expl_id, tmp.clone());
@@ -132,6 +133,7 @@ impl ExplorerInitializer for Orchestrator {
             Ok(())
         }
     }
+
     fn set_spawn_planet(&self) -> ID {
         let vec_planets = self.get_planet_ids_list();
         let mut available_planets = Vec::new();

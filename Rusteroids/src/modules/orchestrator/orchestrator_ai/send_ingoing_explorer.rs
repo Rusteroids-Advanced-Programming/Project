@@ -51,10 +51,10 @@ pub fn send_ingoing_explorer_impl(orch: &Orchestrator, planet_id: ID, explorer_i
 
                                 //fine
                                 let explorer = orch.explorers.get(&explorer_id).unwrap().clone();
-                                *explorer.from_planet.write().unwrap() = Some(
+                                *explorer.base.from_planet.write().unwrap() = Some(
                                     orch.explorer_channels.get(&explorer_id).unwrap().3.clone(),
                                 );
-                                *explorer.current_planet_id.write().unwrap() = planet_id;
+                                *explorer.base.current_planet_id.write().unwrap() = planet_id;
 
                                 orch.explorer_planet
                                     .write()
