@@ -62,7 +62,7 @@ mod tests {
         let orch = Orchestrator::new(diff);
         let arc_orch = Arc::new(RwLock::new(orch));
         arc_orch.write().unwrap().initialize();
-        let vec_explorers = vec![(10, 1)];
+        let vec_explorers = vec![1];
         // for i in 1..9 {
         //     arc_orch.read().unwrap().send_sunray(i);
         // }
@@ -70,7 +70,7 @@ mod tests {
         let orc_clone1 = arc_orch.clone();
         let orc_clone2 = arc_orch.clone();
 
-        let _handle = thread::spawn(move || {
+        let _handle = thread::spawn( move|| {
             orc_clone1.read().unwrap().run();
         });
 

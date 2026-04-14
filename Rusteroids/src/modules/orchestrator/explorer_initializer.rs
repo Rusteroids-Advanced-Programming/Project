@@ -14,13 +14,15 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
-use crate::modules::explorer_utils::explorer::Explorer;
+use crate::modules::explorer_utils::explorer::{Explorer, ExplorerBehaviour};
+use crate::modules::explorer_utils::handlers::AIHandlers;
+use crate::modules::explorers::explorer_1::explorer_1::Explorer1;
 
 #[allow(dead_code)]
 pub trait ExplorerInitializer {
     fn initialize_explorers(
         &mut self,
-        explorers: Vec<(u32, u32)>,
+        explorers: Vec<u32>,
         orch_clone: Arc<RwLock<Orchestrator>>,
     );
 
@@ -32,12 +34,12 @@ pub trait ExplorerInitializer {
 impl ExplorerInitializer for Orchestrator {
     fn initialize_explorers(
         &mut self,
-        explorers: Vec<(u32, u32)>,
+        explorers: Vec<u32>,
         _orch_clone: Arc<RwLock<Orchestrator>>,
     ) {
         self.check_explorer_number(explorers.len()).unwrap();
 
-        for (expl_id, planet_id) in explorers {
+        for (expl_id) in explorers {
             let (tx1, rx1): (
                 Sender<OrchestratorToExplorer>,
                 Receiver<OrchestratorToExplorer>,
@@ -51,22 +53,38 @@ impl ExplorerInitializer for Orchestrator {
             let planet_channels_guard = self.planet_channels.read().unwrap();
 
             let (tx_planet_expl, rx_planet_expl) = unbounded::<PlanetToExplorer>();
-            let mut explorer = ManualExplorer::new(expl_id, planet_id, rx1, tx2);
+
+            let spawn_planet = self.set_spawn_planet();
+
+            let normalized_id = expl_id;
+
+            let mut explorer: Arc<dyn ExplorerBehaviour>;
+            match normalized_id {
+                1 => { explorer = Arc::new(ManualExplorer::new(expl_id, spawn_planet, rx1, tx2)); }
+                2 => { explorer = Arc::new(Explorer1::new(expl_id, spawn_planet, rx1, tx2)); }
+                _ => { explorer = Arc::new(ManualExplorer::new(expl_id, spawn_planet, rx1, tx2)); }
+            }
+
+
             self.explorer_channels
                 .insert(expl_id, (tx1, rx2, tx_planet_expl, rx_planet_expl));
 
-            let spawn_planet = self.set_spawn_planet();
+
             println!("Spawn planet: {}", spawn_planet);
 
-            explorer.base.to_planet = RwLock::new(Some(
+            let mut base_guard = explorer.get_base_mut();
+            base_guard.to_planet = RwLock::new(Some(
                 planet_channels_guard.get(&spawn_planet).unwrap().2.clone(),
             )); //crabtorio have problem whit ts. no initialization of the channels. ONly them are having this problem
-            explorer.base.from_planet = RwLock::new(Some(
+            base_guard.from_planet = RwLock::new(Some(
                 self.explorer_channels.get(&expl_id).unwrap().3.clone(),
             ));
 
-            let tmp = Arc::new(explorer);
-            let tmp_clone = tmp.clone();
+            drop(base_guard);
+
+            // let tmp = Arc::new(explorer);
+            let tmp_clone = explorer.clone();
+            let tmp_clone3 = explorer.clone();
             let handle = thread::spawn(move || {
                 let tmp_clone2 = tmp_clone.clone();
                 tmp_clone.run(tmp_clone2).unwrap_or(());
@@ -79,7 +97,7 @@ impl ExplorerInitializer for Orchestrator {
             // explorer.to_planet = RwLock::new(Some(self.planet_channels.get(&spawn_planet).unwrap().2.clone()));
             //  explorer.from_planet = RwLock::new(Some(self.explorer_channels.get(&expl_id).unwrap().3.clone()));
             self.explorer_threads.insert(expl_id, handle);
-            self.explorers.insert(expl_id, tmp.clone());
+            self.explorers.insert(expl_id, tmp_clone3.clone());
 
             self.start_explorer(expl_id);
             //let spawn_planet = self.set_spawn_planet();
@@ -96,7 +114,7 @@ impl ExplorerInitializer for Orchestrator {
                 expl_channels,
                 planet_channels,
                 graph,
-                tmp.clone(),
+                tmp_clone3.clone(),
                 _orch_clone.clone(),
             ));
             let listener_clone = expl_listener.clone();
@@ -115,7 +133,7 @@ impl ExplorerInitializer for Orchestrator {
 
             let _user_input_handle = thread::spawn(move || {
                 loop {
-                    tmp.handle_user_input();
+                    tmp_clone3.handle_explorer();
                 }
             });
         }

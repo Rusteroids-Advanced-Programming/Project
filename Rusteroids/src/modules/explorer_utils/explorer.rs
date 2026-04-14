@@ -1,15 +1,23 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLockReadGuard, RwLockWriteGuard};
 use common_game::components::resource::{BasicResource, ComplexResourceRequest};
 use common_game::protocols::orchestrator_explorer::{ExplorerToOrchestrator, OrchestratorToExplorer};
 use crossbeam_channel::select_biased;
 use crate::modules::explorer_utils::explorer_ai::ExplorerAI;
 use crate::modules::explorer_utils::explorer_base::ExplorerBase;
 use crate::modules::explorer_utils::handlers::AIHandlers;
+use crate::modules::manual_explorer::bag_type::DummyBag;
+
+const ERROR_ORCH_DISCONNECTED: &'static str = "Orchestrator disconnected from explorer";
 
 pub trait Explorer {
-    const ERROR_ORCH_DISCONNECTED: &'static str = "Orchestrator disconnected from explorer";
-    fn get_base (&self) -> &ExplorerBase;
-    fn run<T: AIHandlers>(&self, container: Arc<T> ) -> Result<(), String> {
+    
+    fn get_base (&self) -> RwLockReadGuard<ExplorerBase>;
+    fn get_base_mut(&self) -> RwLockWriteGuard<ExplorerBase>;
+    
+    fn get_dummy_bag_mut(&self) -> RwLockWriteGuard<DummyBag>;
+    fn get_dummy_bag(&self) -> RwLockReadGuard<DummyBag>;
+    
+    fn run(&self, container: Arc<dyn AIHandlers> ) -> Result<(), String> {
         let kill = self.wait_for_start()?;
         if kill {
             return Ok(());
@@ -78,7 +86,7 @@ pub trait Explorer {
                     self.get_base().set_neighbours(neighbors);
                 }
                 Err(_) => {
-                    return Err(Self::ERROR_ORCH_DISCONNECTED.to_string());
+                    return Err(ERROR_ORCH_DISCONNECTED.to_string());
                 }
                 Ok(OrchestratorToExplorer::StopExplorerAI) => todo!(),
             }
@@ -96,30 +104,35 @@ pub trait Explorer {
                             .send(ExplorerToOrchestrator::StartExplorerAIResult {
                                 explorer_id: self.get_base().explorer_id,
                             })
-                            .map_err(|_| Self::ERROR_ORCH_DISCONNECTED.to_string())?;
+                            .map_err(|_| ERROR_ORCH_DISCONNECTED.to_string())?;
 
                         return Ok(false);
                     }
 
                     Ok(OrchestratorToExplorer::KillExplorer) => {
-                        let mut alive_lock = self.get_base().alive.write().unwrap();
+                        let base_lock = self.get_base();
+                        let mut alive_lock = base_lock.alive.write().unwrap();
                         *alive_lock = false; // aggiunto per visaulizer
                         self.get_base().to_orchestrator
                             .send(ExplorerToOrchestrator::KillExplorerResult { explorer_id: self.get_base().explorer_id })
-                            .map_err(|_| Self::ERROR_ORCH_DISCONNECTED.to_string())?;
+                            .map_err(|_| ERROR_ORCH_DISCONNECTED.to_string())?;
 
                         return Ok(true)
                     }
                     Ok(_) => {
                         self.get_base().to_orchestrator
                             .send(ExplorerToOrchestrator::ResetExplorerAIResult {explorer_id: self.get_base().explorer_id})
-                            .map_err(|_| Self::ERROR_ORCH_DISCONNECTED.to_string())?
+                            .map_err(|_| ERROR_ORCH_DISCONNECTED.to_string())?
                     }
 
-                    Err(_) => return Err(Self::ERROR_ORCH_DISCONNECTED.to_string()),
+                    Err(_) => return Err(ERROR_ORCH_DISCONNECTED.to_string()),
                 },
 
             }
         }
     }
+    
+    fn handle_explorer(&self);
 }
+
+pub trait ExplorerBehaviour: Explorer + AIHandlers + Send + Sync{}

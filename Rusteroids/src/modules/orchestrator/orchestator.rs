@@ -16,6 +16,7 @@ use std::collections::VecDeque;
 use std::sync::{Arc, RwLock};
 use std::thread::{JoinHandle, sleep};
 use std::time::Duration;
+use crate::modules::explorer_utils::explorer::ExplorerBehaviour;
 
 pub enum Difficulty {
     Easy,
@@ -29,7 +30,7 @@ impl Difficulty {
         match self {
             Difficulty::Easy => 0.001,
             Difficulty::Medium => 0.005,
-            Difficulty::Hard => 0.01,
+            Difficulty::Hard => 0.1,
             Difficulty::Peaceful => 0.0,
         }
     }
@@ -64,7 +65,7 @@ pub struct Orchestrator {
         ),
     >,
     pub explorer_planet: RwLock<HashMap<ID, ID>>, //aggiunto rwlock perché mi serve modificarlo per aggiornare il visualizer
-    pub explorers: HashMap<ID, Arc<ManualExplorer>>,
+    pub explorers: HashMap<ID, Arc<dyn ExplorerBehaviour>>,
     pub difficulty: Difficulty,
     pub planet_resources: HashMap<ID, (Vec<String>, Vec<String>)>, //aggiunta per Visualizer
     pub logs: RwLock<VecDeque<String>>,
@@ -150,7 +151,7 @@ impl Orchestrator {
     pub fn run(&self) {
         loop {
             self.manage();
-            sleep(Duration::from_millis(500));
+            sleep(Duration::from_millis(200));
         }
     }
 }

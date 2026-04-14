@@ -51,7 +51,7 @@ async fn main() {
         use crate::modules::orchestrator::explorer_initializer::ExplorerInitializer;
 
         let mut orch_write = shared_orch.write().unwrap();
-        orch_write.initialize_explorers(vec![(1, 1)], shared_orch.clone());
+        orch_write.initialize_explorers(vec![2], shared_orch.clone());
     }
 
     let orch_for_run = shared_orch.clone();
@@ -149,10 +149,11 @@ async fn get_galaxy_status(State(orch): State<Arc<RwLock<Orchestrator>>>) -> Jso
 
     for (&exp_id, &planet_id) in explorer_snapshot.iter() {
         if let Some(explorer_obj) = orch_guard.explorers.get(&exp_id) {
-            let is_alive = *explorer_obj.base.alive.read().unwrap();
+            let is_alive = *explorer_obj.get_base().alive.read().unwrap();
 
             let bag_content = if is_alive {
-                let bag_guard = explorer_obj.dummy_bag.read().unwrap();
+
+                let bag_guard = explorer_obj.get_dummy_bag();
                 let mut content = Vec::new();
                 for (res_type, count) in &bag_guard.basic {
                     for _ in 0..*count {

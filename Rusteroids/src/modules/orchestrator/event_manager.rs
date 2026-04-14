@@ -13,6 +13,7 @@ use crossbeam_channel::{Receiver, Sender};
 use rand::Rng;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use crate::modules::explorer_utils::explorer::ExplorerBehaviour;
 
 pub trait ManageEvents {
     fn manage(&self);
@@ -65,7 +66,7 @@ pub struct ExplorerListener {
         >,
     >,
     galaxy_graph: Arc<RwLock<Graph<ID>>>,
-    explorer: Arc<ManualExplorer>,
+    explorer: Arc<dyn ExplorerBehaviour>,
     orch: Arc<RwLock<Orchestrator>>, //aggiunto per aggiornare l'orchestrator
 }
 
@@ -93,7 +94,7 @@ impl ExplorerListener {
             >,
         >,
         galaxy_graph: Arc<RwLock<Graph<ID>>>,
-        explorer: Arc<ManualExplorer>,
+        explorer: Arc<dyn ExplorerBehaviour>,
         orch: Arc<RwLock<Orchestrator>>,
     ) -> Self {
         Self {
@@ -156,15 +157,16 @@ impl ExplorerListener {
                         .write()
                         .unwrap()
                         .insert(explorer_id, planet_id);
-
-                    *self.explorer.base.current_planet_id.write().unwrap() = planet_id;
+                    
+                    let base_guard = self.explorer.get_base();
+                    *base_guard.current_planet_id.write().unwrap() = planet_id;
                 }
                 ExplorerToOrchestrator::BagContentResponse {
                     explorer_id: _,
                     bag_content,
                 } => {
                     //aggiunto per aggiornare orchestrator
-                    let mut bag_guard = self.explorer.dummy_bag.write().unwrap();
+                    let mut bag_guard = self.explorer.get_dummy_bag_mut();
                     *bag_guard = bag_content;
                 }
                 ExplorerToOrchestrator::GenerateResourceResponse {
@@ -199,14 +201,15 @@ impl ExplorerListener {
                 ExplorerToOrchestrator::KillExplorerResult { explorer_id } => {
                     // DA FIXARE NON VA UN CAZZO
 
-                    if let Ok(mut alive_lock) = self.explorer.base.alive.write() {
+                    if let Ok(mut alive_lock) = self.explorer.get_base().alive.write() {
                         *alive_lock = false;
                     }
 
                     let orch_guard = self.orch.read().unwrap();
 
                     if let Some(orch_explorer) = orch_guard.explorers.get(&explorer_id) {
-                        let mut alive_status = orch_explorer.base.alive.write().unwrap();
+                        let base_guard = orch_explorer.get_base();
+                        let mut alive_status = base_guard.alive.write().unwrap();
                         *alive_status = false;
                     }
 
