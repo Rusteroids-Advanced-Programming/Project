@@ -30,7 +30,7 @@ impl Difficulty {
         match self {
             Difficulty::Easy => 0.001,
             Difficulty::Medium => 0.005,
-            Difficulty::Hard => 0.1,
+            Difficulty::Hard => 0.5,
             Difficulty::Peaceful => 0.0,
         }
     }
@@ -151,7 +151,7 @@ impl Orchestrator {
     pub fn run(&self) {
         loop {
             self.manage();
-            sleep(Duration::from_millis(200));
+            sleep(Duration::from_millis(500));
         }
     }
 }

@@ -132,9 +132,9 @@ impl ExplorerInitializer for Orchestrator {
             // tmp.ask_supported_resources();
 
             let _user_input_handle = thread::spawn(move || {
-                loop {
+
                     tmp_clone3.handle_explorer();
-                }
+
             });
         }
     }

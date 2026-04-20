@@ -125,113 +125,115 @@ impl Explorer for ManualExplorer {
     }
 
     fn handle_explorer(&self) {
-        sleep(Duration::from_millis(2000));
-        println!(
-            "Choose what explorer should do:\n[1] Interact with planet     [2] Move to another one       [3]Show Bag"
-        );
-        let mut tmp = String::new();
-        io::stdin()
-            .read_line(&mut tmp)
-            .expect("Error while reading explorer input");
+        loop {
+            sleep(Duration::from_millis(2000));
+            println!(
+                "Choose what explorer should do:\n[1] Interact with planet     [2] Move to another one       [3]Show Bag"
+            );
+            let mut tmp = String::new();
+            io::stdin()
+                .read_line(&mut tmp)
+                .expect("Error while reading explorer input");
 
-        let input: u8 = tmp.trim().parse().expect("Please insert a valid option");
-        let base_guard = self.base.read().unwrap();
+            let input: u8 = tmp.trim().parse().expect("Please insert a valid option");
+            let base_guard = self.base.read().unwrap();
 
-        match input {
-            1 => {
-                println!("[1] Extract Resource\n[2] Craft Resource");
-                tmp = String::new();
-                io::stdin()
-                    .read_line(&mut tmp)
-                    .expect("Error while reading explorer input");
-                println!("HAI INSERITO {}", tmp);
-                let input2: u8 = tmp.trim().parse().expect("Please insert a valid option");
+            match input {
+                1 => {
+                    println!("[1] Extract Resource\n[2] Craft Resource");
+                    tmp = String::new();
+                    io::stdin()
+                        .read_line(&mut tmp)
+                        .expect("Error while reading explorer input");
+                    println!("HAI INSERITO {}", tmp);
+                    let input2: u8 = tmp.trim().parse().expect("Please insert a valid option");
 
 
 
-                match input2 {
-                    1 => {
-                        println!("Choose Basic Resource:");
-                        let mut options_list = String::new();
-                        let mut options_map = HashMap::new();
-                        let guard = base_guard.basic_resources.read().unwrap();
-                        let mut choices: HashMap<usize, &BasicResourceType> = HashMap::new();
+                    match input2 {
+                        1 => {
+                            println!("Choose Basic Resource:");
+                            let mut options_list = String::new();
+                            let mut options_map = HashMap::new();
+                            let guard = base_guard.basic_resources.read().unwrap();
+                            let mut choices: HashMap<usize, &BasicResourceType> = HashMap::new();
 
-                        for (i, resource) in guard.iter().enumerate() {
-                            options_map.insert(i, resource);
-                            options_list.push_str(&format!("[{}] {:?}\n", i + 1, resource));
-                            choices.insert(i + 1, resource);
+                            for (i, resource) in guard.iter().enumerate() {
+                                options_map.insert(i, resource);
+                                options_list.push_str(&format!("[{}] {:?}\n", i + 1, resource));
+                                choices.insert(i + 1, resource);
+                            }
+
+                            println!("{}", options_list);
+                            tmp = String::new();
+                            io::stdin()
+                                .read_line(&mut tmp)
+                                .expect("Error while reading explorer input");
+                            let choice: usize =
+                                tmp.trim().parse().expect("Please insert a valid option");
+                            let choice = choices.get(&choice).unwrap();
+                            println!("Generating {:?}", choice);
+                            base_guard.generate_resource(**choice, |arg: &Option<&BasicResource>| self.generate_resource_handler(arg));
                         }
 
-                        println!("{}", options_list);
-                        tmp = String::new();
-                        io::stdin()
-                            .read_line(&mut tmp)
-                            .expect("Error while reading explorer input");
-                        let choice: usize =
-                            tmp.trim().parse().expect("Please insert a valid option");
-                        let choice = choices.get(&choice).unwrap();
-                        println!("Generating {:?}", choice);
-                        base_guard.generate_resource(**choice, |arg: &Option<&BasicResource>| self.generate_resource_handler(arg));
-                    }
-
-                    2 => {
-                        println!("Choose Complex Resource:");
-                        let mut options_list = String::new();
-                        let mut options_map = HashMap::new();
-                        let guard = base_guard.combinations.read().unwrap();
-                        for (i, resource) in guard.iter().enumerate() {
-                            options_map.insert(i + 1, resource);
-                            options_list.push_str(&format!("[{}] {:?}\n", i + 1, resource));
+                        2 => {
+                            println!("Choose Complex Resource:");
+                            let mut options_list = String::new();
+                            let mut options_map = HashMap::new();
+                            let guard = base_guard.combinations.read().unwrap();
+                            for (i, resource) in guard.iter().enumerate() {
+                                options_map.insert(i + 1, resource);
+                                options_list.push_str(&format!("[{}] {:?}\n", i + 1, resource));
+                            }
+                            println!("{}", options_list);
+                            tmp = String::new();
+                            io::stdin()
+                                .read_line(&mut tmp)
+                                .expect("Error while reading explorer input");
+                            let input3: usize =
+                                tmp.trim().parse().expect("Please insert a valid option");
+                            let resource = options_map.get(&input3).unwrap();
+                            base_guard.combine_resource(**resource, |arg: &Result<&ComplexResource, &(String, GenericResource, GenericResource)> | self.combine_resource_handler(arg));
                         }
-                        println!("{}", options_list);
-                        tmp = String::new();
-                        io::stdin()
-                            .read_line(&mut tmp)
-                            .expect("Error while reading explorer input");
-                        let input3: usize =
-                            tmp.trim().parse().expect("Please insert a valid option");
-                        let resource = options_map.get(&input3).unwrap();
-                        base_guard.combine_resource(**resource, |arg: &Result<&ComplexResource, &(String, GenericResource, GenericResource)> | self.combine_resource_handler(arg));
-                    }
 
-                    _ => {
-                        println!("CHOOSE A VALID OPTION");
+                        _ => {
+                            println!("CHOOSE A VALID OPTION");
+                        }
                     }
                 }
-            }
 
-            2 => {
-                tmp = String::new();
-                println!(
-                    "Decide neighbour to visit: {:?}",
-                    base_guard.neighbours.read().unwrap()
-                );
-                io::stdin()
-                    .read_line(&mut tmp)
-                    .expect("Error while reading explorer input");
-                let planet_id: ID = tmp.trim().parse().expect("Please insert a valid option");
-                let guard = base_guard.neighbours.read().unwrap();
+                2 => {
+                    tmp = String::new();
+                    println!(
+                        "Decide neighbour to visit: {:?}",
+                        base_guard.neighbours.read().unwrap()
+                    );
+                    io::stdin()
+                        .read_line(&mut tmp)
+                        .expect("Error while reading explorer input");
+                    let planet_id: ID = tmp.trim().parse().expect("Please insert a valid option");
+                    let guard = base_guard.neighbours.read().unwrap();
 
-                if guard.contains(&planet_id) {
-                    base_guard.to_orchestrator
-                        .send(ExplorerToOrchestrator::TravelToPlanetRequest {
-                            explorer_id: base_guard.explorer_id,
-                            current_planet_id: *base_guard.current_planet_id.read().unwrap(),
-                            dst_planet_id: planet_id,
-                        })
-                        .unwrap();
-                } else {
-                    println!("The planet selected is not connected to the current planet")
+                    if guard.contains(&planet_id) {
+                        base_guard.to_orchestrator
+                            .send(ExplorerToOrchestrator::TravelToPlanetRequest {
+                                explorer_id: base_guard.explorer_id,
+                                current_planet_id: *base_guard.current_planet_id.read().unwrap(),
+                                dst_planet_id: planet_id,
+                            })
+                            .unwrap();
+                    } else {
+                        println!("The planet selected is not connected to the current planet")
+                    }
                 }
-            }
 
-            3 => {
-                println!("Show Bag {:?}", base_guard.bag.read().unwrap().to_dummy());
-            }
+                3 => {
+                    println!("Show Bag {:?}", base_guard.bag.read().unwrap().to_dummy());
+                }
 
-            _ => {
-                println!("Invalid explorer input");
+                _ => {
+                    println!("Invalid explorer input");
+                }
             }
         }
     }

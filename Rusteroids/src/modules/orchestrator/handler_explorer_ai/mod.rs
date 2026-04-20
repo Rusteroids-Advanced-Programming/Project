@@ -37,7 +37,7 @@ pub trait HandlerExplorer {
     fn generate_resource(&self, expl_id: ID, to_generate: BasicResourceType);
     fn combine_resource(&self, expl_id: ID, to_combine: ComplexResourceType);
     fn get_explorer_bag(&self, expl_id: ID);
-    fn get_explorer_neighbours(&self, expl_id: ID);
+    fn get_explorer_neighbours(&self, expl_id: ID, current_planet_id: ID);
 }
 
 impl HandlerExplorer for Orchestrator {
@@ -81,7 +81,7 @@ impl HandlerExplorer for Orchestrator {
         get_explorer_bag_impl(self, expl_id);
     }
 
-    fn get_explorer_neighbours(&self, expl_id: ID) {
-        get_explorer_neighbours_impl(self, expl_id);
+    fn get_explorer_neighbours(&self, expl_id: ID, current_planet_id: ID) {
+        get_explorer_neighbours_impl(self, expl_id, current_planet_id);
     }
 }

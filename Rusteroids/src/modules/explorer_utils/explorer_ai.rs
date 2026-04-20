@@ -178,6 +178,7 @@ impl ExplorerAI for ExplorerBase {
                     explorer_id: self.explorer_id,
                 })
                 .unwrap();
+
             if let Some(from_planet) = &*from_planet_guard {
                 //println!("askcombinations");
                 let msg = from_planet

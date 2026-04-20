@@ -14,6 +14,7 @@ use rand::Rng;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use crate::modules::explorer_utils::explorer::ExplorerBehaviour;
+use crate::modules::orchestrator::handler_explorer_ai::HandlerExplorer;
 
 pub trait ManageEvents {
     fn manage(&self);
@@ -116,23 +117,24 @@ impl ExplorerListener {
                     explorer_id,
                     current_planet_id,
                 } => {
-                    println!("Received neighbors request from explorer #{}", explorer_id);
-                    let mut neighbours = Vec::new();
-                    for node in &self.galaxy_graph.read().unwrap().nodes {
-                        let guard = node.read().unwrap();
-                        if guard.value == current_planet_id {
-                            for n in &guard.adjacent_nodes {
-                                neighbours.push(n.read().unwrap().value);
-                            }
-                        }
-                    }
-
-                    println!("Neighbors 2: {:?}", neighbours);
-                    tx.send(OrchestratorToExplorer::NeighborsResponse {
-                        neighbors: neighbours,
-                    })
-                    .unwrap();
-                    println!("Neighbors response sent");
+                    // println!("Received neighbors request from explorer #{}", explorer_id);
+                    // let mut neighbours = Vec::new();
+                    // for node in &self.galaxy_graph.read().unwrap().nodes {
+                    //     let guard = node.read().unwrap();
+                    //     if guard.value == current_planet_id {
+                    //         for n in &guard.adjacent_nodes {
+                    //             neighbours.push(n.read().unwrap().value);
+                    //         }
+                    //     }
+                    // }
+                    //
+                    // println!("Neighbors 2: {:?}", neighbours);
+                    // tx.send(OrchestratorToExplorer::NeighborsResponse {
+                    //     neighbors: neighbours,
+                    // })
+                    // .unwrap();
+                    // println!("Neighbors response sent");
+                    self.orch.read().unwrap().get_explorer_neighbours(explorer_id, current_planet_id)
                 }
                 ExplorerToOrchestrator::TravelToPlanetRequest {
                     explorer_id,
@@ -207,16 +209,18 @@ impl ExplorerListener {
 
                     let orch_guard = self.orch.read().unwrap();
 
-                    if let Some(orch_explorer) = orch_guard.explorers.get(&explorer_id) {
-                        let base_guard = orch_explorer.get_base();
-                        let mut alive_status = base_guard.alive.write().unwrap();
-                        *alive_status = false;
-                    }
+                    // if let Some(orch_explorer) = orch_guard.explorers.get(&explorer_id) {
+                    //     let base_guard = orch_explorer.get_base();
+                    //     let mut alive_status = base_guard.alive.write().unwrap();
+                    //     *alive_status = false;
+                    // }
 
                     let mut explorer_planet_lock = orch_guard.explorer_planet.write().unwrap();
                     explorer_planet_lock.remove(&explorer_id);
 
                     orch_guard.add_log(format!("ALERT: Esploratore #{} è morto.", explorer_id));
+
+                    break;
                 }
                 msg => {
                     println!(
@@ -241,13 +245,25 @@ impl ExplorerListener {
         let planet_channels_guard = self.planet_channels.read().unwrap();
         let planet_channels = planet_channels_guard.get(&planet_id).unwrap();
         let (sender, receiver, _expl_sender) = planet_channels;
+
+        if ! *self.explorer.get_base().alive.read().unwrap() {
+            return;
+        }
+
         println!("Sending explorer #{} to {}", explorer_id, planet_id);
-        sender
+
+        let incoming_expl_msg_sent = sender
             .send(OrchestratorToPlanet::IncomingExplorerRequest {
                 explorer_id,
                 new_sender: tx_planet_to_expl.clone(),
-            })
-            .unwrap();
+            });
+
+        //IN  CASO IL PIANETA DI DESTINAZIONE SIA ESPLOSO FINCHé L'EXPLORER TENTA DI RAGGIUNGERLO
+        if let Err(e) = incoming_expl_msg_sent {
+            println!("Error sending incoming explorer message: {:?}", e);
+            return;
+        }
+
         let msg = receiver.recv().unwrap();
         match msg {
             PlanetToOrchestrator::IncomingExplorerResponse {
@@ -304,25 +320,36 @@ impl ExplorerListener {
         let planet_channels = planet_channels_guard.get(&planet_id).unwrap(); //_> planet che dano problemi: #6600
 
         let (tx2, rx2, _ex2) = planet_channels;
-        tx2.send(OrchestratorToPlanet::OutgoingExplorerRequest { explorer_id })
-            .unwrap();
-        let planet_resp = rx2.recv().unwrap();
-        match planet_resp {
-            PlanetToOrchestrator::OutgoingExplorerResponse {
-                planet_id: _,
-                explorer_id: _,
-                res,
-            } => match res {
-                Ok(_) => true,
-                Err(_err) => false,
-            },
-            resp => {
-                println!(
-                    "2 received unexpected msg while waiting for outgoing explorer response{:?}",
-                    resp
-                );
+
+        let outgoing_msg_to_planet = tx2.send(OrchestratorToPlanet::OutgoingExplorerRequest { explorer_id });
+        match outgoing_msg_to_planet {
+            Ok(_) => {
+                let planet_resp = rx2.recv().unwrap();
+                match planet_resp {
+                    PlanetToOrchestrator::OutgoingExplorerResponse {
+                        planet_id: _,
+                        explorer_id: _,
+                        res,
+                    } => match res {
+                        Ok(_) => true,
+                        Err(_err) => false,
+                    },
+                    resp => {
+                        println!(
+                            "2 received unexpected msg while waiting for outgoing explorer response{:?}",
+                            resp
+                        );
+                        false
+                    }
+                }
+            }
+            Err(e) => {
+                println!("Explorer #{} tried to escape an exploding planet #{} and he died", explorer_id, planet_id);
+
                 false
             }
         }
+
+
     }
 }

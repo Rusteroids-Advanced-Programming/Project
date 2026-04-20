@@ -11,6 +11,13 @@ pub fn send_ingoing_explorer_impl(orch: &Orchestrator, planet_id: ID, explorer_i
     let planet_channels_guard = orch.planet_channels.read().unwrap();
     let (sender, receiver, _expl_sender) = planet_channels_guard.get(&planet_id).unwrap();
     let tx1 = orch.explorer_channels.get(&explorer_id).unwrap().2.clone();
+
+    let expl = orch.explorers.get(&explorer_id).unwrap();
+
+    if ! *expl.get_base().alive.read().unwrap() {
+        return false;
+    }
+
     println!("Sending explorer #{} to {}", explorer_id, planet_id);
     sender
         .send(OrchestratorToPlanet::IncomingExplorerRequest {

@@ -64,6 +64,35 @@ impl<T: PartialEq> Graph<T> {
         }
         self.nodes.remove(node_index);
     }
+
+    pub fn is_node_in_graph(&self, value: &T) -> bool {
+        for node in &self.nodes {
+            if &node.read().unwrap().value == value {
+                return true
+            }
+        }
+
+        false
+    }
+
+    pub fn get_node(&self, value: &T) -> Option<Arc<RwLock<Node<T>>>> {
+        for node in &self.nodes {
+            if &node.read().unwrap().value == value {
+                return Some(node.clone());
+            }
+        }
+        None
+    }
+
+    pub fn is_adjacent_node(&self, current_node: Arc<RwLock<Node<T>>>, value: &T) -> bool {
+        let adjacents = &current_node.read().unwrap().adjacent_nodes;
+        for adj_node in adjacents {
+            if &adj_node.read().unwrap().value == value {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 impl<T: fmt::Display> fmt::Debug for Graph<T> {

@@ -93,6 +93,7 @@ impl StatsMap {
     }
 
     pub fn planet_killed(&mut self, id: ID) {
+        println!("DEBUG: planet_killed {}", id);
         if self.map.contains_key(&id) {
             let tmp = self.map.get_mut(&id).unwrap();
             tmp.alive = false;

@@ -43,6 +43,7 @@ pub fn send_asteroid_impl(orch: &Orchestrator, target: ID) {
                     if let Some(exp_id) = explorer_to_kill {
                         if let Some((tx_orch_to_exp, _, _, _)) = orch.explorer_channels.get(&exp_id) {
                             let _ = tx_orch_to_exp.send(OrchestratorToExplorer::KillExplorer);
+                            println!("Pianeta #{} distrutto: Explorer #{} eliminato.\n", target, exp_id);
                             orch.add_log(format!("Pianeta #{} distrutto: Explorer #{} eliminato.", target, exp_id));
                         }
                     }
@@ -53,7 +54,6 @@ pub fn send_asteroid_impl(orch: &Orchestrator, target: ID) {
                     let kill_ack = receiver.recv().unwrap();
                     match kill_ack {
                         PlanetToOrchestrator::KillPlanetResult { planet_id } => {
-
                             let log_msg = format!("Killed Planet #{}", planet_id);
                             //println!("{}",log_msg);
                             orch.add_log(log_msg);

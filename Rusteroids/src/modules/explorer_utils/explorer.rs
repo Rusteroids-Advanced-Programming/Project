@@ -83,6 +83,7 @@ pub trait Explorer {
                     self.get_base().get_bag();
                 }
                 Ok(OrchestratorToExplorer::NeighborsResponse { neighbors }) => {
+                    println!("Received neighbors response: {:?}", neighbors);
                     self.get_base().set_neighbours(neighbors);
                 }
                 Err(_) => {

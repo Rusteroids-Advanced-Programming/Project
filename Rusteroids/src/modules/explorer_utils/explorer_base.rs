@@ -21,6 +21,7 @@ pub struct ExplorerBase {
     pub neighbours: RwLock<Vec<ID>>,
     pub basic_resources: RwLock<HashSet<BasicResourceType>>,
     pub combinations: RwLock<HashSet<ComplexResourceType>>,
+    
 }
 
 impl ExplorerBase {

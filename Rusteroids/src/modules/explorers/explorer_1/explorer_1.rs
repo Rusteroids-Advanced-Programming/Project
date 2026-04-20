@@ -11,7 +11,9 @@ use rand::Rng;
 use crate::modules::explorer_utils::explorer::{Explorer, ExplorerBehaviour};
 use crate::modules::explorer_utils::explorer_ai::ExplorerAI;
 use crate::modules::explorer_utils::explorer_base::ExplorerBase;
+use crate::modules::explorer_utils::explorer_map::ExplorerMap;
 use crate::modules::explorer_utils::handlers::AIHandlers;
+use crate::modules::explorer_utils::planet_infos::PlanetInfos;
 use crate::modules::explorer_utils::tasks::{Task, TaskState};
 use crate::modules::explorers::explorer_1::tasks::visit_all_planet::TotalPlanetsVisitedTask;
 use crate::modules::manual_explorer::bag_type::{BagType, DummyBag};
@@ -20,6 +22,7 @@ pub struct Explorer1 {
     pub base: RwLock<ExplorerBase>,
     pub tot_visits_task: RwLock<TotalPlanetsVisitedTask>,
     pub dummy_bag: RwLock<DummyBag>,
+    pub explorer_map: RwLock<ExplorerMap>,
 }
 
 impl Explorer1 {
@@ -44,8 +47,9 @@ impl Explorer1 {
 
         Self {
             base,
-            tot_visits_task: RwLock::new(TotalPlanetsVisitedTask::new(12)),
+            tot_visits_task: RwLock::new(TotalPlanetsVisitedTask::new(500)),
             dummy_bag: RwLock::new(DummyBag::new(HashMap::new(), HashMap::new())),
+            explorer_map: RwLock::new(ExplorerMap::new())
         }
     }
 }
@@ -90,10 +94,31 @@ impl Explorer for Explorer1 {
             sleep(Duration::from_millis(1000));
 
             let base_guard = self.get_base();
-            base_guard.ask_for_neighbours();
+            let alive = base_guard.alive.read().unwrap();
 
-            let planet_ids = base_guard.neighbours.read().unwrap();
-
+            if ! *alive {
+                println!("Explorer #{} è morto come un cogl", base_guard.explorer_id);
+                return;
+            }
+            
+            let mut explorer_map_guard = self.explorer_map.write().unwrap();
+            let current_planet_id = base_guard.current_planet_id.read().unwrap();
+            
+            if !explorer_map_guard.is_planet_discovered(&current_planet_id) {
+                base_guard.ask_for_neighbours();
+                base_guard.ask_supported_resources();
+                base_guard.ask_combinations();
+                
+                let planet_infos = PlanetInfos::new(base_guard.basic_resources.read().unwrap().clone(), base_guard.combinations.read().unwrap().clone());
+                explorer_map_guard.planet_discovery(*current_planet_id, planet_infos, base_guard.neighbours.read().unwrap().clone());
+            }
+            
+            println!("EXPLORER MAP = {:?}", explorer_map_guard);
+            // let planet_ids = base_guard.neighbours.read().unwrap();
+            let current_node = explorer_map_guard.graph.get_node(&current_planet_id).unwrap();
+            let current_node_guard = current_node.read().unwrap();
+            let planet_ids = &current_node_guard.adjacent_nodes;
+            
             if planet_ids.len() > 0 {
 
                 match self.tot_visits_task.read().unwrap().get_state() {
@@ -103,12 +128,12 @@ impl Explorer for Explorer1 {
                     }
                     TaskState::Pending => {
                         let rand_index = get_random_index(planet_ids.len());
-                        let target_planet = planet_ids[rand_index];
+                        let target_planet = &planet_ids[rand_index];
 
                         self.get_base().to_orchestrator.send(ExplorerToOrchestrator::TravelToPlanetRequest {
                             explorer_id: self.get_base().explorer_id,
-                            current_planet_id: self.get_base().current_planet_id.read().unwrap().clone(),
-                            dst_planet_id: target_planet,
+                            current_planet_id: current_planet_id.clone(),
+                            dst_planet_id: target_planet.read().unwrap().value,
                         }).unwrap();
                     }
                     _ => {

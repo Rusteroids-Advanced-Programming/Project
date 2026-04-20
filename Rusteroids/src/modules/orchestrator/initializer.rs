@@ -102,50 +102,50 @@ impl Initializer for Orchestrator {
 
             match virtual_id {
                 1 => {
-                    planet_wrapper = rust_eze::create_planet(1, rx1, tx2, ex2);
+                    planet_wrapper = rust_eze::create_planet(*planet_id, rx1, tx2, ex2);
                     planet_name = "Rust-Eze".to_string();
                 }
 
                 2 => {
-                    planet_wrapper = ciuc::create_planet(rx1, tx2, ex2, 2);
+                    planet_wrapper = ciuc::create_planet(rx1, tx2, ex2, *planet_id);
                     planet_name = "Ciuc".to_string()
                 }
 
                 3 => {
-                    planet_wrapper = trip::trip(3, rx1, tx2, ex2).unwrap();
+                    planet_wrapper = trip::trip(*planet_id, rx1, tx2, ex2).unwrap();
                     planet_name = "Trip".to_string()
                 }
 
                 4 => {
-                    planet_wrapper = crabtorio::create_planet(4, rx1, tx2, ex2); //doesn't let us set the id of the planet
+                    planet_wrapper = crabtorio::create_planet(*planet_id, rx1, tx2, ex2); //doesn't let us set the id of the planet
                     planet_name = "Crabtorio".to_string()
                 }
 
                 5 => {
-                    planet_wrapper = rusty_crab_ap2025::planet::create_planet(rx1, tx2, ex2, 5);
+                    planet_wrapper = rusty_crab_ap2025::planet::create_planet(rx1, tx2, ex2, *planet_id);
                     planet_name = "Rusty-Crab".to_string()
                 }
 
                 6 => {
-                    planet_wrapper = enterprise::create_planet(6, rx1, tx2, ex2);
+                    planet_wrapper = enterprise::create_planet(*planet_id, rx1, tx2, ex2);
                     planet_name = "Enterprise".to_string()
                 }
 
                 7 => {
                     planet_wrapper =
-                        rustrelli::create_planet(7, rx1, tx2, ex2, ExplorerRequestLimit::None);
+                        rustrelli::create_planet(*planet_id, rx1, tx2, ex2, ExplorerRequestLimit::None);
                     planet_name = "Rustrelli".to_string()
                 }
                 8 => {
                     planet_wrapper =
-                        rusteroid_planet::rusteroids::Rusteroids::new(8, 2, rx1, tx2, ex2)
+                        rusteroid_planet::rusteroids::Rusteroids::new(*planet_id, 2, rx1, tx2, ex2)
                             .unwrap()
                             .planet;
                     planet_name = "Rusteroids".to_string()
                 }
                 _ => {
                     planet_wrapper =
-                        rustrelli::create_planet(7, rx1, tx2, ex2, ExplorerRequestLimit::None);
+                        rustrelli::create_planet(*planet_id, rx1, tx2, ex2, ExplorerRequestLimit::None);
                     planet_name = "Rustrelli".to_string()
                 }
             }
