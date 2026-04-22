@@ -125,32 +125,38 @@ impl ExplorerAI for ExplorerBase {
         let from_planet_guard = self.from_planet.read().unwrap();
 
         if let Some(to_planet) = to_planet_guard.as_ref() {
-            to_planet
-                .send(ExplorerToPlanet::SupportedResourceRequest {
+            let msg_res = to_planet.send(ExplorerToPlanet::SupportedResourceRequest {
                     explorer_id: self.explorer_id,
-                })
-                .unwrap();
-            println!("From_planet {:?}", self.from_planet);
+                });
+            
+            match msg_res {
+                Err(e) => {
+                    println!("Pianeta esploso finchè gli chiedevo le basic resources");
+                }
+                Ok(()) => {
+                    println!("From_planet {:?}", self.from_planet);
 
-            if let Some(from_planet) = from_planet_guard.as_ref() {
-                //println!("Before message");
-                let msg = from_planet.recv().unwrap();
-                //println!("After message");
-                match msg {
-                    PlanetToExplorer::SupportedResourceResponse { resource_list } => {
-                        //println!("Resource list: {:?}", resource_list);
-                        let mut guard = self.basic_resources.write().unwrap();
-                        *guard = resource_list;
-                    }
-                    msg => {
-                        println!(
-                            "Received unexpected message: {:?} while waiting for SupportedResourceResponse",
-                            msg
-                        );
+                    if let Some(from_planet) = from_planet_guard.as_ref() {
+                        //println!("Before message");
+                        let msg = from_planet.recv().unwrap();
+                        //println!("After message");
+                        match msg {
+                            PlanetToExplorer::SupportedResourceResponse { resource_list } => {
+                                //println!("Resource list: {:?}", resource_list);
+                                let mut guard = self.basic_resources.write().unwrap();
+                                *guard = resource_list;
+                            }
+                            msg => {
+                                println!(
+                                    "Received unexpected message: {:?} while waiting for SupportedResourceResponse",
+                                    msg
+                                );
+                            }
+                        }
+                    } else {
+                        println!("channel from_plResource Listanet has been dropped");
                     }
                 }
-            } else {
-                println!("channel from_plResource Listanet has been dropped");
             }
         } else {
             println!("channel to_planet has been dropped");
@@ -173,25 +179,31 @@ impl ExplorerAI for ExplorerBase {
         let from_planet_guard = self.from_planet.read().unwrap();
 
         if let Some(to_planet) = &*to_planet_guard {
-            to_planet
-                .send(ExplorerToPlanet::SupportedCombinationRequest {
+            let msg_res = to_planet.send(ExplorerToPlanet::SupportedCombinationRequest {
                     explorer_id: self.explorer_id,
-                })
-                .unwrap();
-
-            if let Some(from_planet) = &*from_planet_guard {
-                //println!("askcombinations");
-                let msg = from_planet
-                    .recv_timeout(Duration::from_millis(2000))
-                    .unwrap(); // -> proviamo a mettere forzatamente il nostro pianeta e vedere se funziona( a patto che noi gestiamo bene questo messaggio)
-                match msg {
-                    PlanetToExplorer::SupportedCombinationResponse { combination_list } => {
-                        let mut guard = self.combinations.write().unwrap();
-                        *guard = combination_list;
+                });
+            match msg_res {
+                Err(e) => {
+                    println!("Pianeta esploso finchè chiedevo le recipes")
+                }
+                Ok(()) => {
+                    if let Some(from_planet) = &*from_planet_guard {
+                        //println!("askcombinations");
+                        let msg = from_planet
+                            .recv_timeout(Duration::from_millis(2000))
+                            .unwrap(); // -> proviamo a mettere forzatamente il nostro pianeta e vedere se funziona( a patto che noi gestiamo bene questo messaggio)
+                        match msg {
+                            PlanetToExplorer::SupportedCombinationResponse { combination_list } => {
+                                let mut guard = self.combinations.write().unwrap();
+                                *guard = combination_list;
+                            }
+                            _ => {}
+                        }
                     }
-                    _ => {}
                 }
             }
+
+
         }
     }
 

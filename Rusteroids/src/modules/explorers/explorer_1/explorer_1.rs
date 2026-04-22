@@ -103,14 +103,19 @@ impl Explorer for Explorer1 {
             
             let mut explorer_map_guard = self.explorer_map.write().unwrap();
             let current_planet_id = base_guard.current_planet_id.read().unwrap();
-            
+
             if !explorer_map_guard.is_planet_discovered(&current_planet_id) {
                 base_guard.ask_for_neighbours();
                 base_guard.ask_supported_resources();
                 base_guard.ask_combinations();
-                
+
                 let planet_infos = PlanetInfos::new(base_guard.basic_resources.read().unwrap().clone(), base_guard.combinations.read().unwrap().clone());
                 explorer_map_guard.planet_discovery(*current_planet_id, planet_infos, base_guard.neighbours.read().unwrap().clone());
+            }
+
+            else {
+                base_guard.ask_for_neighbours();
+                explorer_map_guard.update_neighbors(&current_planet_id,&base_guard.neighbours.read().unwrap());
             }
             
             println!("EXPLORER MAP = {:?}", explorer_map_guard);

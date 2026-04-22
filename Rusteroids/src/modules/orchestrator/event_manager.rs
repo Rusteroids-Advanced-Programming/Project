@@ -17,30 +17,45 @@ use crate::modules::explorer_utils::explorer::ExplorerBehaviour;
 use crate::modules::orchestrator::handler_explorer_ai::HandlerExplorer;
 
 pub trait ManageEvents {
-    fn manage(&self);
-    fn get_target_planet(&self) -> ID;
+    fn manage(&self) -> bool;
+    fn get_target_planet(&self) -> Option<ID>;
 }
 
 impl ManageEvents for Orchestrator {
-    fn manage(&self) {
+    fn manage(&self) -> bool{
         let mut rng = rand::rng();
         let asteroid_probability = self.difficulty.get_ratio();
         let target = self.get_target_planet();
-        if rng.random_bool(asteroid_probability) {
-            let log_msg = format!("Sending asteroid to {}", target);
-            //println!("{}",log_msg);
-            self.add_log(log_msg);
-            self.send_asteroid(target);
-        } else {
-            self.send_sunray(target);
+        if let Some(target) = target {
+            if rng.random_bool(asteroid_probability) {
+                let log_msg = format!("Sending asteroid to {}", target);
+                //println!("{}",log_msg);
+                self.add_log(log_msg);
+                self.send_asteroid(target);
+            } else {
+                self.send_sunray(target);
+            }
+
+            true
         }
+        else {
+            println!("Tutti i pianeti esplosi, gioco finito");
+            false
+        }
+
     }
 
-    fn get_target_planet(&self) -> ID {
+    fn get_target_planet(&self) -> Option<ID> {
         let planet_vec = self.get_planet_ids_list();
-        let mut rng = rand::rng();
-        let rand_index = rng.random_range(0..planet_vec.len());
-        planet_vec[rand_index]
+        if planet_vec.len() == 0 {
+            None
+        }
+        else {
+            let mut rng = rand::rng();
+            let rand_index = rng.random_range(0..planet_vec.len());
+            Some(planet_vec[rand_index])
+        }
+
     }
 }
 

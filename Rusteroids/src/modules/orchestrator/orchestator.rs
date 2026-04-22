@@ -150,7 +150,9 @@ impl Orchestrator {
 
     pub fn run(&self) {
         loop {
-            self.manage();
+            if !self.manage() {
+                break;
+            }
             sleep(Duration::from_millis(500));
         }
     }

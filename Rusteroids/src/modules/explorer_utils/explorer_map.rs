@@ -49,4 +49,24 @@ impl ExplorerMap{
 
 
     }
+
+    pub fn update_neighbors(&mut self, planet_id: &ID,neighbors: &Vec<ID>) {
+        let current_node = self.graph.get_node(planet_id).unwrap();
+
+        let mut new_adj = Vec::new();
+
+        let mut adj = &mut current_node.write().unwrap().adjacent_nodes;
+        for (i, n) in adj.iter().enumerate() {
+            let mut found = false;
+            for neighbor in neighbors{
+                if &n.read().unwrap().value == neighbor{
+                    found = true;
+                    new_adj.push(n.clone());
+                    break;
+                }
+            }
+        }
+
+        *adj = new_adj;
+    }
 }
