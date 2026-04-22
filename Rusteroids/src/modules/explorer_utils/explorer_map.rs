@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 use common_game::utils::ID;
 use crate::modules::explorer_utils::planet_infos::PlanetInfos;
@@ -50,23 +50,21 @@ impl ExplorerMap{
 
     }
 
-    pub fn update_neighbors(&mut self, planet_id: &ID,neighbors: &Vec<ID>) {
-        let current_node = self.graph.get_node(planet_id).unwrap();
+    pub fn update_neighbors(&mut self, planet_id: &ID, neighbors: &Vec<ID>) {
+        let current_node = self.graph.get_node(planet_id).expect("Nodo non trovato");
 
         let mut new_adj = Vec::new();
 
-        let mut adj = &mut current_node.write().unwrap().adjacent_nodes;
-        for (i, n) in adj.iter().enumerate() {
-            let mut found = false;
-            for neighbor in neighbors{
-                if &n.read().unwrap().value == neighbor{
-                    found = true;
-                    new_adj.push(n.clone());
-                    break;
-                }
-            }
+        for neighbor_id in neighbors {
+            let neighbor_node = if !self.graph.is_node_in_graph(neighbor_id) {
+                self.graph.add_node(neighbor_id.clone())
+            } else {
+                self.graph.get_node(neighbor_id).unwrap()
+            };
+            new_adj.push(neighbor_node);
         }
 
-        *adj = new_adj;
+        let mut write_guard = current_node.write().unwrap();
+        write_guard.adjacent_nodes = new_adj;
     }
 }

@@ -16,7 +16,6 @@ dependencies = [
  "planet",
  "pub-rust-eze",
  "rand",
- "rusteroid_planet",
  "rustrelli",
  "rusty-crab-ap2025",
  "serde",
@@ -1146,16 +1145,6 @@ checksum = "796e8d2b6696392a43bea58116b667fb4c29727dc5abd27d6acf338bb4f688c7"
 dependencies = [
  "cfg-if",
  "ordered-multimap",
-]
-
-[[package]]
-name = "rusteroid_planet"
-version = "0.1.0"
-source = "git+https://github.com/Rusteroids-Advanced-Programming/Planet.git#7a4fc69949bd6084884915056ec483f609f909b3"
-dependencies = [
- "common-game",
- "crossbeam-channel",
- "env_logger",
 ]
 
 [[package]]

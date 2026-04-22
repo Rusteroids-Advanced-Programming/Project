@@ -177,7 +177,21 @@ impl ExplorerListener {
                     
                     let base_guard = self.explorer.get_base();
                     *base_guard.current_planet_id.write().unwrap() = planet_id;
+
+                    //check che l'expl non sia andato su un pianeta esploso nel frattempo
+                    let stats_guard = orch_guard.stats_map.read().unwrap();
+                    let planet_stats = stats_guard.get(&planet_id);
+
+                    match planet_stats {
+                        None =>  {}
+                        Some(planet_stats) => {
+                            if !planet_stats.alive{
+                                *base_guard.alive.write().unwrap() = false;
+                            }
+                        }
+                    }
                 }
+
                 ExplorerToOrchestrator::BagContentResponse {
                     explorer_id: _,
                     bag_content,
@@ -231,7 +245,7 @@ impl ExplorerListener {
                     // }
 
                     let mut explorer_planet_lock = orch_guard.explorer_planet.write().unwrap();
-                    explorer_planet_lock.remove(&explorer_id);
+                    //explorer_planet_lock.remove(&explorer_id);
 
                     orch_guard.add_log(format!("ALERT: Esploratore #{} è morto.", explorer_id));
 
@@ -364,7 +378,5 @@ impl ExplorerListener {
                 false
             }
         }
-
-
     }
 }

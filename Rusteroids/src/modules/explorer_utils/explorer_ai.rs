@@ -202,8 +202,9 @@ impl ExplorerAI for ExplorerBase {
                     }
                 }
             }
-
-
+        }
+        else {
+            println!("channel to_planet has been dropped");
         }
     }
 

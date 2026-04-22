@@ -115,17 +115,20 @@ impl Explorer for Explorer1 {
 
             else {
                 base_guard.ask_for_neighbours();
-                explorer_map_guard.update_neighbors(&current_planet_id,&base_guard.neighbours.read().unwrap());
             }
+
+            explorer_map_guard.update_neighbors(&current_planet_id, &base_guard.neighbours.read().unwrap());
+
+
+            println!("neighbours of explorer #{}: {:?}", base_guard.explorer_id, base_guard.neighbours.read().unwrap());
             
-            println!("EXPLORER MAP = {:?}", explorer_map_guard);
+            println!("EXPLORER #{} MAP = {:?}", self.get_base().explorer_id, explorer_map_guard);
             // let planet_ids = base_guard.neighbours.read().unwrap();
             let current_node = explorer_map_guard.graph.get_node(&current_planet_id).unwrap();
             let current_node_guard = current_node.read().unwrap();
             let planet_ids = &current_node_guard.adjacent_nodes;
             
             if planet_ids.len() > 0 {
-
                 match self.tot_visits_task.read().unwrap().get_state() {
                     TaskState::Finished => {
                         println!("LAVORO FINITO CAPO");
@@ -135,6 +138,7 @@ impl Explorer for Explorer1 {
                         let rand_index = get_random_index(planet_ids.len());
                         let target_planet = &planet_ids[rand_index];
 
+                        println!("Explorer #{} is starting to think", self.get_base().explorer_id);
                         self.get_base().to_orchestrator.send(ExplorerToOrchestrator::TravelToPlanetRequest {
                             explorer_id: self.get_base().explorer_id,
                             current_planet_id: current_planet_id.clone(),
@@ -142,11 +146,14 @@ impl Explorer for Explorer1 {
                         }).unwrap();
                     }
                     _ => {
-
+                        println!("Task uncompletable for explorer #{}", self.get_base().explorer_id);
                     }
                 }
             }
 
+            else {
+                println!("Explorer #{} non ha vicini in cui spostarsi", self.get_base().explorer_id);
+            }
         }
     }
 }

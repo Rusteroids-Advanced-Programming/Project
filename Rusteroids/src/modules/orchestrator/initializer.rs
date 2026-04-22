@@ -98,7 +98,7 @@ impl Initializer for Orchestrator {
             }
             let planet_id = &tmp.value;
 
-            let virtual_id = ((planet_id - 1) % 8) + 1; // dall'9 in poi ricominciano i pianeti in ordine
+            let virtual_id = ((planet_id - 1) % 7) + 1; // dall'8 in poi ricominciano i pianeti in ordine
 
             match virtual_id {
                 1 => {
@@ -136,13 +136,13 @@ impl Initializer for Orchestrator {
                         rustrelli::create_planet(*planet_id, rx1, tx2, ex2, ExplorerRequestLimit::None);
                     planet_name = "Rustrelli".to_string()
                 }
-                8 => {
-                    planet_wrapper =
-                        rusteroid_planet::rusteroids::Rusteroids::new(*planet_id, 2, rx1, tx2, ex2)
-                            .unwrap()
-                            .planet;
-                    planet_name = "Rusteroids".to_string()
-                }
+                // 8 => {
+                //     planet_wrapper =
+                //         rusteroid_planet::rusteroids::Rusteroids::new(*planet_id, 2, rx1, tx2, ex2)
+                //             .unwrap()
+                //             .planet;
+                //     planet_name = "Rusteroids".to_string()
+                // }
                 _ => {
                     planet_wrapper =
                         rustrelli::create_planet(*planet_id, rx1, tx2, ex2, ExplorerRequestLimit::None);

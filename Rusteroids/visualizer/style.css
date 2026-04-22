@@ -1,17 +1,48 @@
-body {
-    background-color: #0b0e14;
-    color: white;
-    font-family: sans-serif;
-    margin: 0;
-    overflow-x: hidden;
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+/* STILE */
+* {
+    font-family: 'Press Start 2P', cursive;
+    image-rendering: pixelated; /* Ereditato da tutti */
+    box-sizing: border-box;
 }
 
+html, body {
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden !important;
+    position: fixed;
+    margin: 0;
+}
+
+body {
+    background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('media/background.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    color: white;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+/* LAYOUT */
 #galaxy-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    padding: 50px;
-    justify-content: center;
+    position: relative;
+    width: 900px;
+    height: 900px;
+    margin: 50px auto;
+}
+
+#connections-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    z-index: 1;
+}
+
+.planet-wrapper {
+    position: absolute;
+    z-index: 2;
 }
 
 .planet-sprite {
@@ -20,57 +51,38 @@ body {
     transition: transform 0.2s;
 }
 
-.planet-sprite:hover {
-    transform: scale(1.2);
+.planet-sprite:hover { transform: scale(1.2); }
+
+.planet-sprite.dead { filter: grayscale(1) brightness(0.5); }
+
+/* INTERFACCIA */
+.details-box,
+.explorer-card,
+#log-container {
+    background-color: #000000 !important;
+    border: 4px solid #ffffff !important;
+    border-radius: 0px !important;
+    padding: 15px;
+    color: #ffffff;
+    box-shadow: 5px 5px 0px rgba(0, 0, 0, 0.8);
 }
 
-.planet-sprite.dead {
-    filter: grayscale(1) brightness(0.5);
-}
-
-
+/* DETTAGLI PIANETA */
 .details-box {
     position: fixed;
     top: 20px;
     right: 20px;
-    width: 250px;
-    background: rgba(0, 0, 0, 0.85);
-    border: 2px solid #4a90e2;
-    padding: 15px;
-    border-radius: 8px;
-    z-index: 100;
+    width: 300px;
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 2000;
 }
 
-.hidden { display: none; }
-
-.resource-section {
-    margin: 15px 0;
-}
-
-.badge-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-top: 5px;
-}
-
-.badge {
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: bold;
-    text-transform: uppercase;
-    color: white;
-}
-
-.badge.base {
-    background-color: #3498db;
-    border: 1px solid #2980b9;
-}
-
-.badge.complex {
-    background-color: #9b59b6;
-    border: 1px solid #8e44ad;
+.details-box h2 {
+    border-bottom: 2px solid #ffffff;
+    padding-bottom: 10px;
+    margin-top: 0;
+    padding-right: 10px;
 }
 
 .status-ready {
@@ -84,84 +96,127 @@ body {
     font-style: italic;
 }
 
-.log-panel {
+/* LOG ORCHESTRATOR */
+#log-container {
     position: fixed;
     bottom: 20px;
     left: 20px;
-    width: 350px;
-    height: 200px;
-    background: rgba(0, 0, 0, 0.85);
-    border: 1px solid #333;
-    color: #00ff00;
-    font-family: 'Courier New', monospace;
-    font-size: 11px;
+    width: 400px;
+    height: 250px;
     display: flex;
     flex-direction: column;
-    pointer-events: none;
+    padding: 0;
+    overflow: hidden;
+    z-index: 1000;
 }
 
 .log-header {
-    background: #222;
-    padding: 5px;
-    font-weight: bold;
-    border-bottom: 1px solid #444;
-    color: #aaa;
-}
-
-.log-content {
-    padding: 10px;
-    overflow-y: hidden;
-    display: flex;
-    flex-direction: column-reverse;
-}
-
-.log-entry {
-    margin-bottom: 4px;
-    border-left: 2px solid #00ff00;
-    padding-left: 5px;
-}
-
-.planet-wrapper {
-    display: inline-block;
-    margin: 20px;
-    vertical-align: middle;
-    text-align: center;
-}
-
-.explorer-badge {
-    background: rgba(41, 128, 185, 0.9);
-    color: white;
-    padding: 2px 6px;
-    border-radius: 10px;
+    background-color: #000000;
+    color: #ffffff;
+    padding: 5px 10px;
     font-size: 10px;
     font-weight: bold;
-    white-space: nowrap;
-    border: 1px solid white;
-    box-shadow: 0 0 5px rgba(0,0,0,0.5);
-    z-index: 10;
-    pointer-events: none;
+    text-transform: uppercase;
 }
 
-.explorer-detail-card {
-    background: rgba(255, 255, 255, 0.1);
-    border-left: 3px solid #3498db;
-    padding: 8px;
-    margin-top: 10px;
-    border-radius: 4px;
+#log-scroll-area {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 10px;
+    scrollbar-width: thin;
 }
 
-.explorer-header {
+#log-scroll-area::-webkit-scrollbar { width: 8px; }
+#log-scroll-area::-webkit-scrollbar-thumb { background: #fff; }
+
+.log-entry {
+    font-size: 10px;
+    margin-bottom: 5px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 2px;
+    color: #2ecc71;
+}
+
+/* SCHEDA EXPLORER */
+#explorers-status-container {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 15px;
+}
+
+.explorer-card { width: 250px; }
+
+.explorer-card h4 {
+    margin: 0 0 8px 0;
+    border-bottom: 1px solid #7f8c8d;
+    padding-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.explorer-card.dead {
+    border-color: #e74c3c !important;
+    color: #e74c3c;
+    opacity: 0.8;
+}
+
+.res-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 0;
+}
+
+.res-count-positive {
+    color: #2ecc71;
     font-weight: bold;
-    color: #3498db;
-    margin-bottom: 4px;
 }
 
-.explorer-bag {
-    font-size: 0.9em;
-    color: #ccc;
-}
-
-.no-data {
+.no-res {
     font-style: italic;
-    color: #777;
+    color: #7f8c8d;
+    margin-top: 5px;
+    font-size: 0.9em;
+}
+
+/* ALTRO */
+.hidden { display: none !important; }
+
+.close-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.close-btn:hover {
+    color: #ff4d4d;
+}
+
+
+.badge {
+    padding: 3px 8px;
+    font-size: 10px;
+    text-transform: uppercase;
+    color: white;
+    margin: 2px;
+    display: inline-block;
+}
+
+.badge.base { background-color: #3498db; }
+.badge.complex { background-color: #9b59b6; }
+
+.explorer-badge {
+    background: #2980b9;
+    color: white;
+    padding: 2px 6px;
+    font-size: 10px;
+    border: 1px solid white;
+    pointer-events: none;
 }

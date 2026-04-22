@@ -62,7 +62,7 @@ impl ExplorerInitializer for Orchestrator {
             match normalized_id {
                 1 => { explorer = Arc::new(ManualExplorer::new(expl_id, spawn_planet, rx1, tx2)); }
                 2 => { explorer = Arc::new(Explorer1::new(expl_id, spawn_planet, rx1, tx2)); }
-                _ => { explorer = Arc::new(ManualExplorer::new(expl_id, spawn_planet, rx1, tx2)); }
+                _ => { explorer = Arc::new(Explorer1::new(expl_id, spawn_planet, rx1, tx2)); }
             }
 
 

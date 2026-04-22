@@ -6,3 +6,4 @@ pub mod read_galaxy;
 // mod arcade_explorer;
 mod explorer_utils;
 mod explorers;
+pub(crate) mod visualizer;
