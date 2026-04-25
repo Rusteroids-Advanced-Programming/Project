@@ -1,6 +1,8 @@
+use std::collections::HashSet;
 use common_game::components::resource::{
     BasicResourceType, ComplexResourceRequest, ComplexResourceType, GenericResource, ResourceType,
 };
+use crate::modules::manual_explorer::bag_type::DummyBag;
 
 pub fn complex_resource_type_to_request(
     complex_type: &ComplexResourceType,
@@ -39,6 +41,7 @@ pub fn complex_resource_type_to_request(
 
     result
 }
+
 
 pub fn get_recipe(complex_resource_type: &ComplexResourceType) -> (ResourceType, ResourceType) {
     let result: (ResourceType, ResourceType);
@@ -80,5 +83,16 @@ pub fn get_recipe(complex_resource_type: &ComplexResourceType) -> (ResourceType,
             )
         }
     }
+    result
+}
+
+
+pub fn get_shopping_list(bag: &DummyBag, complex_resource_type: &ComplexResourceType) -> HashSet<ResourceType> {
+    let mut result = HashSet::new();
+
+    let (lhs, rhs) = get_recipe(complex_resource_type);
+    if !bag.is_in_bag(&lhs) { result.insert(lhs); }
+    if !bag.is_in_bag(&rhs) { result.insert(rhs); }
+
     result
 }

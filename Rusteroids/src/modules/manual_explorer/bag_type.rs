@@ -1,3 +1,4 @@
+use std::any::Any;
 use common_game::components::resource::{
     BasicResource, BasicResourceType, ComplexResource, ComplexResourceType, GenericResource,
     ResourceType,
@@ -19,6 +20,68 @@ impl DummyBag {
         complex: HashMap<ComplexResourceType, usize>,
     ) -> Self {
         Self { complex, basic }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.complex.is_empty() && self.basic.is_empty()
+    }
+
+    pub fn is_basic_in_bag(&self, basic_resource_type: &BasicResourceType) -> bool {
+        let tmp = self.basic.get(basic_resource_type);
+        match tmp {
+            None => false,
+            Some(qty) => {
+                qty >= &1
+            }
+        }
+    }
+
+    pub fn is_complex_in_bag(&self, complex_resource_type: &ComplexResourceType) -> bool {
+        let tmp = self.complex.get(complex_resource_type);
+        match tmp {
+            None => false,
+            Some(qty) => {
+                qty >= &1
+            }
+        }
+    }
+
+    pub fn is_in_bag(&self, resource_type: &ResourceType) -> bool {
+        let mut check: bool = false;
+
+        if resource_type.is_carbon() {
+            check = self.is_basic_in_bag(&BasicResourceType::Carbon);
+        }
+        else if resource_type.is_hydrogen() {
+            check = self.is_basic_in_bag(&BasicResourceType::Hydrogen);
+        }
+        else if resource_type.is_silicon() {
+            check = self.is_basic_in_bag(&BasicResourceType::Silicon);
+        }
+        else if resource_type.is_oxygen() {
+            check = self.is_basic_in_bag(&BasicResourceType::Oxygen);
+        }
+
+        else if resource_type.is_diamond() {
+            check = self.is_complex_in_bag(&ComplexResourceType::Diamond);
+        }
+        else if resource_type.is_dolphin() {
+            check = self.is_complex_in_bag(&ComplexResourceType::Dolphin);
+        }
+        else if resource_type.is_aipartner() {
+            check = self.is_complex_in_bag(&ComplexResourceType::AIPartner);
+        }
+        else if resource_type.is_robot() {
+            check = self.is_complex_in_bag(&ComplexResourceType::Robot);
+        }
+        else if resource_type.is_water() {
+            check = self.is_complex_in_bag(&ComplexResourceType::Water);
+        }
+        else if resource_type.is_life() {
+            check = self.is_complex_in_bag(&ComplexResourceType::Life);
+        }
+
+        check
     }
 
     /*  pub fn get_all_resources_as_strings(&self) -> Vec<String> {//aggiunta in caso per non rendere complex e basic public

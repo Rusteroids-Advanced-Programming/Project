@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use common_game::components::resource::{ComplexResourceType};
 use common_game::components::resource::GenericResource::ComplexResources;
+use crate::modules::explorer_utils::resource_types::get_all_complex_resource_types;
 use crate::modules::explorer_utils::tasks::{Task, TaskState};
 use crate::modules::explorer_utils::tasks::TaskState::{Finished, Pending};
 
@@ -25,10 +26,29 @@ impl Task<HashMap<ComplexResourceType, bool>> for CraftAllTask {
 
 impl CraftAllTask {
     pub fn new() -> Self {
-        Self {state: Pending, crafted: HashMap::new()}
+        let all_complex = get_all_complex_resource_types();
+        let mut crafted_map = HashMap::new();
+
+        for resource in all_complex {
+            crafted_map.insert(resource, false);
+        }
+
+        Self {state: Pending, crafted: crafted_map}
     }
 
     pub fn update_progress(&mut self, crafted_resource: ComplexResourceType) {
         self.crafted.insert(crafted_resource, true);
+
+        //checking state of the task
+        let mut completed = true;
+        for resource in self.crafted.values() {
+            if !resource {
+                completed = false;
+            }
+        }
+
+        if completed {
+            self.update_state(TaskState::Finished);
+        }
     }
 }

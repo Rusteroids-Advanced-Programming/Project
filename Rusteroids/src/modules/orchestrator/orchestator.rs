@@ -30,7 +30,7 @@ impl Difficulty {
         match self {
             Difficulty::Easy => 0.001,
             Difficulty::Medium => 0.005,
-            Difficulty::Hard => 0.5,
+            Difficulty::Hard => 0.1,
             Difficulty::Peaceful => 0.0,
         }
     }

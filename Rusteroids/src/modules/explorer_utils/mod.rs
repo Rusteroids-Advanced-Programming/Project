@@ -5,3 +5,5 @@ pub mod explorer_base;
 pub mod explorer;
 pub mod explorer_map;
 pub mod planet_infos;
+pub mod resource_types;
+pub mod recipes;
