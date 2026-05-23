@@ -4,6 +4,7 @@ pub trait Task <Progress> {
     fn get_progress(&self) -> Progress;
 }
 
+#[derive(Clone)]
 pub enum TaskState {
     Finished,
     Pending,

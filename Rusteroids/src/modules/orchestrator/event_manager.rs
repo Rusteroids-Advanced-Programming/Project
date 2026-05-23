@@ -200,6 +200,7 @@ impl ExplorerListener {
                     let mut bag_guard = self.explorer.get_dummy_bag_mut();
                     *bag_guard = bag_content;
                 }
+
                 ExplorerToOrchestrator::GenerateResourceResponse {
                     explorer_id,
                     generated,
@@ -211,6 +212,7 @@ impl ExplorerListener {
                         println!("Errore nella generazione della risorsa: {:?}", generated);
                     }
                 }
+
                 ExplorerToOrchestrator::CombineResourceResponse {
                     explorer_id,
                     generated,
@@ -222,7 +224,7 @@ impl ExplorerListener {
                         tx.send(OrchestratorToExplorer::BagContentRequest).unwrap();
                     } else {
                         println!(
-                            " Errore nel crafting di {}: {:?}",
+                            "Errore nel crafting dell'explorer #{}: {:?}",
                             explorer_id,
                             generated.err().unwrap()
                         );
@@ -272,6 +274,9 @@ impl ExplorerListener {
         let (_expl_sender, _expl_receiver, tx_planet_to_expl, _rx_planet_to_expl) =
             &*explorer_channels_guard;
         let planet_channels_guard = self.planet_channels.read().unwrap();
+
+        println!("planet channels: {:?}\nplanet id: {}", planet_channels_guard, planet_id);
+
         let planet_channels = planet_channels_guard.get(&planet_id).unwrap();
         let (sender, receiver, _expl_sender) = planet_channels;
 

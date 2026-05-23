@@ -40,6 +40,7 @@ impl Initializer for Orchestrator {
 
             fn get_known_resources(planet_id: u32) -> (Vec<String>, Vec<String>) {
                 //FUNZIONA MA CAMBIO PIÙ AVANTI FA SCHIFO
+                // rimettere tutti i pianeti
                 match planet_id {
                     1 => (
                         vec![
@@ -92,13 +93,14 @@ impl Initializer for Orchestrator {
                         ],
                         vec![],
                     ), // Rustrelli
-                    8 => (vec!["Carbon".into()], vec![]), // Rusteroids
+                    // 8 => (vec!["Carbon".into()], vec![]), // Rusteroids
                     _ => (vec![],vec![]), //estremamente provvisorio
                 }
             }
             let planet_id = &tmp.value;
 
-            let virtual_id = ((planet_id - 1) % 7) + 1; // dall'8 in poi ricominciano i pianeti in ordine
+            //TEST TEMPORANEO: RIMETTERE %7
+            let virtual_id = ((planet_id - 1) % 7) + 1; // dal 7 in poi ricominciano i pianeti in ordine
 
             match virtual_id {
                 1 => {
@@ -116,26 +118,28 @@ impl Initializer for Orchestrator {
                     planet_name = "Trip".to_string()
                 }
 
-                4 => {
-                    planet_wrapper = crabtorio::create_planet(*planet_id, rx1, tx2, ex2); //doesn't let us set the id of the planet
+                5 => {
+                    planet_wrapper = crabtorio::create_planet(*planet_id, rx1, tx2, ex2);
                     planet_name = "Crabtorio".to_string()
                 }
 
-                5 => {
+                6 => {
                     planet_wrapper = rusty_crab_ap2025::planet::create_planet(rx1, tx2, ex2, *planet_id);
                     planet_name = "Rusty-Crab".to_string()
                 }
 
-                6 => {
+                7 => {
                     planet_wrapper = enterprise::create_planet(*planet_id, rx1, tx2, ex2);
                     planet_name = "Enterprise".to_string()
                 }
 
-                7 => {
+                8 => {
                     planet_wrapper =
                         rustrelli::create_planet(*planet_id, rx1, tx2, ex2, ExplorerRequestLimit::None);
                     planet_name = "Rustrelli".to_string()
                 }
+
+                //remember to redo the numbers when we put new planets
                 // 8 => {
                 //     planet_wrapper =
                 //         rusteroid_planet::rusteroids::Rusteroids::new(*planet_id, 2, rx1, tx2, ex2)

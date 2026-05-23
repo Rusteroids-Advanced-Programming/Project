@@ -26,6 +26,33 @@ impl DummyBag {
         self.complex.is_empty() && self.basic.is_empty()
     }
 
+    pub fn get_basic_quantity(&self, basic_resource_type: &BasicResourceType) -> usize {
+        let tmp = self.basic.get(basic_resource_type);
+        match tmp {
+            Some(qty) => *qty,
+            None => 0,
+        }
+    }
+
+    pub fn get_complex_quantity(&self, complex_resource_type: &ComplexResourceType) -> usize {
+        let tmp = self.complex.get(complex_resource_type);
+        match tmp {
+            Some(qty) => *qty,
+            None => 0,
+        }
+    }
+
+    pub fn get_resource_quantity(&self, resource: &ResourceType) -> usize {
+        match resource {
+            ResourceType::Basic(basic_type) => {
+                self.get_basic_quantity(basic_type)
+            },
+            ResourceType::Complex(complex_type) => {
+                self.get_complex_quantity(complex_type)
+            }
+        }
+    }
+
     pub fn is_basic_in_bag(&self, basic_resource_type: &BasicResourceType) -> bool {
         let tmp = self.basic.get(basic_resource_type);
         match tmp {

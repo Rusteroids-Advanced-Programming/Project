@@ -4,10 +4,31 @@ use common_game::components::resource::{BasicResource, BasicResourceType, Comple
 use common_game::protocols::orchestrator_explorer::ExplorerToOrchestrator;
 use common_game::protocols::planet_explorer::{ExplorerToPlanet, PlanetToExplorer};
 use common_game::utils::ID;
-use crossbeam_channel::Sender;
+use crossbeam_channel::{Receiver, Sender};
 use std::thread::sleep;
 use std::time::Duration;
 use crate::modules::explorer_utils::explorer_base::ExplorerBase;
+
+fn send_message_to_planet_with_timeout(to_planet: &Sender<ExplorerToPlanet>, from_planet:&Receiver<PlanetToExplorer>, msg: ExplorerToPlanet) -> Option<PlanetToExplorer> {
+    let res_sent = to_planet.send(msg);
+    match res_sent {
+        Ok(_) => {
+            let response = from_planet.recv_timeout(Duration::from_millis(5000));
+            match response {
+                Ok(response) => {
+                    Some(response)
+                }
+                Err(e) => {
+                    // println!("IL pianeta #{} non ha risposto entro il timeout (per me può esplodere)", planet_id);
+                    None
+                }
+            }
+        },
+        Err(_) => {
+            return None;
+        }
+    }
+}
 
 pub trait ExplorerAI {
     fn start_ai <F> (&self, custom_handler: F) where F : Fn();
@@ -24,7 +45,7 @@ pub trait ExplorerAI {
     fn ask_supported_resources(&self);
     fn give_combinations(&mut self);
     fn ask_combinations(&self);
-    fn generate_resource <F> (&self, to_generate: BasicResourceType, custom_handler: F) where F : Fn(&Option<&BasicResource>);
+    fn generate_resource <F> (&self, to_generate: BasicResourceType, custom_handler: F) -> Result<(), String> where F : Fn(&Option<&BasicResource>);
     fn combine_resource <F> (&self, to_generate: ComplexResourceType, custom_handler: F) where F : Fn(&Result<&ComplexResource, &(String, GenericResource, GenericResource)>);
     fn get_bag(&self);
     fn ask_for_neighbours(&self);
@@ -70,7 +91,10 @@ impl ExplorerAI for ExplorerBase {
     }
 
     fn move_to_planet <F> (&self, to_planet: Option<Sender<ExplorerToPlanet>>, planet_id: ID, custom_handler : F) where F : Fn(){
+        println!("MOVE TO_PLANET {}", planet_id);
+
         let mut to_planet_guard = self.to_planet.write().unwrap();
+        println!("to_planet lock ricevuto");
         let mut current_planet_guard = self.current_planet_id.write().unwrap();
         *to_planet_guard = to_planet;
         *current_planet_guard = planet_id;
@@ -79,6 +103,7 @@ impl ExplorerAI for ExplorerBase {
             "Explorer #{} moved to planet #{}",
             self.explorer_id, planet_id
         );
+
         self.to_orchestrator
             .send(ExplorerToOrchestrator::MovedToPlanetResult {
                 explorer_id: self.explorer_id,
@@ -90,7 +115,7 @@ impl ExplorerAI for ExplorerBase {
         drop(to_planet_guard);
 
         self.ask_for_neighbours();
-        sleep(Duration::from_millis(500));
+        // sleep(Duration::from_millis(500));
         //println!("neighbors: {:?}", self.neighbours.read().unwrap());
         self.ask_combinations();
         //println!("after combinatiopns");
@@ -124,43 +149,69 @@ impl ExplorerAI for ExplorerBase {
         let to_planet_guard = self.to_planet.read().unwrap();
         let from_planet_guard = self.from_planet.read().unwrap();
 
-        if let Some(to_planet) = to_planet_guard.as_ref() {
-            let msg_res = to_planet.send(ExplorerToPlanet::SupportedResourceRequest {
-                    explorer_id: self.explorer_id,
-                });
-            
-            match msg_res {
-                Err(e) => {
-                    println!("Pianeta esploso finchè gli chiedevo le basic resources");
-                }
-                Ok(()) => {
-                    println!("From_planet {:?}", self.from_planet);
+        if let Some(to_planet) = to_planet_guard.as_ref() && let Some(from_planet) = from_planet_guard.as_ref() {
+            let resp = send_message_to_planet_with_timeout(to_planet, from_planet, ExplorerToPlanet::SupportedResourceRequest {
+                explorer_id: self.explorer_id,
+            });
 
-                    if let Some(from_planet) = from_planet_guard.as_ref() {
-                        //println!("Before message");
-                        let msg = from_planet.recv().unwrap();
-                        //println!("After message");
-                        match msg {
-                            PlanetToExplorer::SupportedResourceResponse { resource_list } => {
-                                //println!("Resource list: {:?}", resource_list);
-                                let mut guard = self.basic_resources.write().unwrap();
-                                *guard = resource_list;
-                            }
-                            msg => {
-                                println!(
-                                    "Received unexpected message: {:?} while waiting for SupportedResourceResponse",
-                                    msg
-                                );
-                            }
+            match resp {
+                Some(msg) => {
+                    match msg {
+                        PlanetToExplorer::SupportedResourceResponse { resource_list } => {
+                            //println!("Resource list: {:?}", resource_list);
+                            let mut guard = self.basic_resources.write().unwrap();
+                            *guard = resource_list;
                         }
-                    } else {
-                        println!("channel from_plResource Listanet has been dropped");
+                        msg => {
+                            println!(
+                                "Received unexpected message: {:?} while waiting for SupportedResourceResponse",
+                                msg
+                            );
+                        }
                     }
                 }
+
+                None => {}
             }
-        } else {
-            println!("channel to_planet has been dropped");
         }
+
+        // if let Some(to_planet) = to_planet_guard.as_ref() {
+        //     let msg_res = to_planet.send(ExplorerToPlanet::SupportedResourceRequest {
+        //             explorer_id: self.explorer_id,
+        //         });
+        //
+        //     match msg_res {
+        //         Err(e) => {
+        //             println!("Pianeta esploso finchè gli chiedevo le basic resources");
+        //         }
+        //         Ok(()) => {
+        //             println!("From_planet {:?}", self.from_planet);
+        //
+        //             if let Some(from_planet) = from_planet_guard.as_ref() {
+        //                 //println!("Before message");
+        //                 let msg = from_planet.recv().unwrap();
+        //                 //println!("After message");
+        //                 match msg {
+        //                     PlanetToExplorer::SupportedResourceResponse { resource_list } => {
+        //                         //println!("Resource list: {:?}", resource_list);
+        //                         let mut guard = self.basic_resources.write().unwrap();
+        //                         *guard = resource_list;
+        //                     }
+        //                     msg => {
+        //                         println!(
+        //                             "Received unexpected message: {:?} while waiting for SupportedResourceResponse",
+        //                             msg
+        //                         );
+        //                     }
+        //                 }
+        //             } else {
+        //                 println!("channel from_plResource Listanet has been dropped");
+        //             }
+        //         }
+        //     }
+        // } else {
+        //     println!("channel to_planet has been dropped");
+        // }
     }
 
     fn give_combinations(&mut self) {
@@ -178,133 +229,233 @@ impl ExplorerAI for ExplorerBase {
         let to_planet_guard = self.to_planet.read().unwrap();
         let from_planet_guard = self.from_planet.read().unwrap();
 
-        if let Some(to_planet) = &*to_planet_guard {
-            let msg_res = to_planet.send(ExplorerToPlanet::SupportedCombinationRequest {
-                    explorer_id: self.explorer_id,
-                });
-            match msg_res {
-                Err(e) => {
-                    println!("Pianeta esploso finchè chiedevo le recipes")
-                }
-                Ok(()) => {
-                    if let Some(from_planet) = &*from_planet_guard {
-                        //println!("askcombinations");
-                        let msg = from_planet
-                            .recv_timeout(Duration::from_millis(2000))
-                            .unwrap(); // -> proviamo a mettere forzatamente il nostro pianeta e vedere se funziona( a patto che noi gestiamo bene questo messaggio)
-                        match msg {
-                            PlanetToExplorer::SupportedCombinationResponse { combination_list } => {
-                                let mut guard = self.combinations.write().unwrap();
-                                *guard = combination_list;
-                            }
-                            _ => {}
+        if let Some(to_planet) = to_planet_guard.as_ref() && let Some(from_planet) = from_planet_guard.as_ref() {
+            let resp = send_message_to_planet_with_timeout(to_planet, from_planet, ExplorerToPlanet::SupportedCombinationRequest {
+                explorer_id: self.explorer_id,
+            });
+
+            match resp {
+                Some(msg) => {
+                    match msg {
+                        PlanetToExplorer::SupportedCombinationResponse { combination_list } => {
+                            let mut guard = self.combinations.write().unwrap();
+                            *guard = combination_list;
+                        }
+                        msg => {
+                            println!("Received unexpected message: {:?} while waiting for SupportedCombinationResponse", msg);
                         }
                     }
                 }
+                None => {}
             }
         }
-        else {
-            println!("channel to_planet has been dropped");
-        }
+
+        // if let Some(to_planet) = &*to_planet_guard {
+        //     let msg_res = to_planet.send(ExplorerToPlanet::SupportedCombinationRequest {
+        //             explorer_id: self.explorer_id,
+        //         });
+        //     match msg_res {
+        //         Err(e) => {
+        //             println!("Pianeta esploso finchè chiedevo le recipes")
+        //         }
+        //         Ok(()) => {
+        //             if let Some(from_planet) = &*from_planet_guard {
+        //                 //println!("askcombinations");
+        //                 let msg = from_planet
+        //                     .recv_timeout(Duration::from_millis(2000))
+        //                     .unwrap(); // -> proviamo a mettere forzatamente il nostro pianeta e vedere se funziona( a patto che noi gestiamo bene questo messaggio)
+        //                 match msg {
+        //                     PlanetToExplorer::SupportedCombinationResponse { combination_list } => {
+        //                         let mut guard = self.combinations.write().unwrap();
+        //                         *guard = combination_list;
+        //                     }
+        //                     msg => {
+        //                         println!("Received unexpected message: {:?} while waiting for SupportedCombinationResponse", msg);
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+        // else {
+        //     println!("channel to_planet has been dropped");
+        // }
     }
 
-    fn generate_resource <F> (&self, to_generate: BasicResourceType, custom_handler: F) where F: Fn(&Option<&BasicResource>) {
+    fn generate_resource <F> (&self, to_generate: BasicResourceType, custom_handler: F) -> Result<(), String>
+    where F: Fn(&Option<&BasicResource>){
         let to_planet_guard = self.to_planet.read().unwrap();
         let from_planet_guard = self.from_planet.read().unwrap();
-        if let Some(to_planet) = to_planet_guard.as_ref() {
-            to_planet
-                .send(ExplorerToPlanet::GenerateResourceRequest {
-                    explorer_id: self.explorer_id,
-                    resource: to_generate,
-                })
-                .unwrap();
-            if let Some(from_planet) = from_planet_guard.as_ref() {
-                let msg = from_planet.recv().unwrap();
-                let result: Result<(), String>;
-                match msg {
-                    PlanetToExplorer::GenerateResourceResponse { resource } => {
-                        let tmp = &resource.as_ref();
-                        custom_handler( tmp);
 
-                        match resource {
-                            Some(resource) => {
-                                println!("Generated basic resource: {:?}", resource);
-                                let mut bag_guard = self.bag.write().unwrap();
-                                bag_guard.add_basic_resource(resource);
-                                result = Ok(());
-                            }
-                            None => {
-                                result = Err(format!("Failed to gen {:?}", to_generate));
-                            }
-                        }
-                    },
-                    msg => {
-                        result = Err(format!(
-                            "Unexpected message while wating for Generate Resource Response {:?}",
-                            msg
-                        ));
-                    }
-                }
+        if let Some(to_planet) = to_planet_guard.as_ref() && let Some(from_planet) = from_planet_guard.as_ref() {
+            let resp = send_message_to_planet_with_timeout(to_planet, from_planet, ExplorerToPlanet::GenerateResourceRequest {
+                explorer_id: self.explorer_id,
+                resource: to_generate,
+            });
 
-                self.to_orchestrator
-                    .send(ExplorerToOrchestrator::GenerateResourceResponse {
-                        explorer_id: self.explorer_id,
-                        generated: result,
-                    })
-                    .unwrap();
-            }
-        }
-    }
-
-    fn combine_resource <F> (&self, to_generate: ComplexResourceType, custom_handler: F) where F: Fn(&Result<&ComplexResource, &(String, GenericResource, GenericResource)>){
-        let generate_request = self.get_complex_resource_request(to_generate);
-        let to_planet_guard = self.to_planet.read().unwrap();
-        let from_planet_guard = self.from_planet.read().unwrap();
-        if let Some(to_planet) = to_planet_guard.as_ref() {
-            if let Some(generate_request) = generate_request {
-                to_planet
-                    .send(ExplorerToPlanet::CombineResourceRequest {
-                        explorer_id: self.explorer_id,
-                        msg: generate_request,
-                    })
-                    .unwrap();
-                if let Some(from_planet) = from_planet_guard.as_ref() {
-                    let msg = from_planet.recv().unwrap();
+            match resp {
+                Some(msg) => {
                     let result: Result<(), String>;
                     match msg {
-                        PlanetToExplorer::CombineResourceResponse { complex_response } => {
-
-                            let tmp = &complex_response.as_ref();
+                        PlanetToExplorer::GenerateResourceResponse { resource } => {
+                            let tmp = &resource.as_ref();
                             custom_handler(tmp);
 
-                            match complex_response {
-                                Ok(resource) => {
+                            println!("DEBUG: RICEVUTA RESPONSE DALLA GENERAZIONE: {:?}", resource);
+
+                            match resource {
+                                Some(resource) => {
+                                    println!("Generated basic resource: {:?}", resource);
                                     let mut bag_guard = self.bag.write().unwrap();
-                                    bag_guard.add_complex_resource(resource);
+                                    bag_guard.add_basic_resource(resource);
                                     result = Ok(());
                                 }
-                                Err((_e, _res1, _res2)) => {
-                                    result = Err("Couldn't combine resource".to_string());
-                                    // self.bag.add_to_bag(ResourceType::Basic(from_generic_type_to_basic(res1).unwrap()));
-                                    // self.bag.add_to_bag(ResourceType::Basic(from_generic_type_to_basic(res2).unwrap()));
+                                None => {
+                                    result = Err(format!("Failed to gen {:?}", to_generate));
                                 }
                             }
-                        }
-                        _ => {
-                            result = Err("Couldn't combine resource".to_string());
+                        },
+                        msg => {
+                            println!("Received unexpected message: {:?} while waiting for GenerateResourceResponse", msg);
+
+                            result = Err(format!(
+                                "Unexpected message while wating for Generate Resource Response {:?}",
+                                msg
+                            ));
                         }
                     }
 
                     self.to_orchestrator
-                        .send(ExplorerToOrchestrator::CombineResourceResponse {
+                        .send(ExplorerToOrchestrator::GenerateResourceResponse {
                             explorer_id: self.explorer_id,
-                            generated: result,
+                            generated: result.clone(),
                         })
                         .unwrap();
+
+                    result
+                }
+                None => {
+                    Err(format!("Failed to generate resource {:?}, planet exceeded timeout", to_generate))
+                }
+            }
+        }
+
+        else {
+            Err(format!("Failed to generate resource {:?}, planet channels are dead", to_generate))
+        }
+    }
+
+
+    fn combine_resource <F> (&self, to_generate: ComplexResourceType, custom_handler: F) where F: Fn(&Result<&ComplexResource, &(String, GenericResource, GenericResource)>){
+        let generate_request = self.get_complex_resource_request(to_generate);
+        
+        println!("Combine resource request {:?}", generate_request);
+        
+        let to_planet_guard = self.to_planet.read().unwrap();
+        let from_planet_guard = self.from_planet.read().unwrap();
+
+        if let Some(to_planet) = to_planet_guard.as_ref() && let Some(from_planet) = from_planet_guard.as_ref() {
+            if let Some(generate_request) = generate_request {
+                let resp = send_message_to_planet_with_timeout(to_planet, from_planet, ExplorerToPlanet::CombineResourceRequest {
+                    explorer_id: self.explorer_id,
+                    msg: generate_request,
+                });
+
+                match resp {
+                    Some(msg) => {
+                        let result: Result<(), String>;
+                        match msg {
+                            PlanetToExplorer::CombineResourceResponse { complex_response } => {
+
+                                let tmp = &complex_response.as_ref();
+                                custom_handler(tmp);
+
+                                match complex_response {
+                                    Ok(resource) => {
+                                        // println!("DEBUG: Combined resource successfully: {:?}", resource);
+                                        let mut bag_guard = self.bag.write().unwrap();
+                                        bag_guard.add_complex_resource(resource);
+                                        result = Ok(());
+                                    }
+                                    Err((e, res1, res2)) => {
+                                        // println!("DEBUG: Could not generate using {:?} + {:?}: {}", res1, res2, e);
+
+                                        result = Err("Couldn't combine resource".to_string());
+                                        // self.bag.add_to_bag(ResourceType::Basic(from_generic_type_to_basic(res1).unwrap()));
+                                        // self.bag.add_to_bag(ResourceType::Basic(from_generic_type_to_basic(res2).unwrap()));
+                                    }
+                                }
+                            }
+                            msg => {
+                                println!("Received unexpected message: {:?} while waiting for CombineResourceResponse", msg);
+                                result = Err("Couldn't combine resource".to_string());
+                            }
+                        }
+
+                        self.to_orchestrator
+                            .send(ExplorerToOrchestrator::CombineResourceResponse {
+                                explorer_id: self.explorer_id,
+                                generated: result,
+                            })
+                            .unwrap();
+                    }
+
+                None => {}
+
                 }
             }
         }
     }
+
+        // if let Some(to_planet) = to_planet_guard.as_ref() {
+        //     if let Some(generate_request) = generate_request {
+        //         to_planet
+        //             .send(ExplorerToPlanet::CombineResourceRequest {
+        //                 explorer_id: self.explorer_id,
+        //                 msg: generate_request,
+        //             })
+        //             .unwrap();
+        //         if let Some(from_planet) = from_planet_guard.as_ref() {
+        //             let msg = from_planet.recv().unwrap();
+        //             let result: Result<(), String>;
+        //             match msg {
+        //                 PlanetToExplorer::CombineResourceResponse { complex_response } => {
+        //
+        //                     let tmp = &complex_response.as_ref();
+        //                     custom_handler(tmp);
+        //
+        //                     match complex_response {
+        //                         Ok(resource) => {
+        //                             println!("DEBUG: Combined resource successfully: {:?}", resource);
+        //                             let mut bag_guard = self.bag.write().unwrap();
+        //                             bag_guard.add_complex_resource(resource);
+        //                             result = Ok(());
+        //                         }
+        //                         Err((e, res1, res2)) => {
+        //                             println!("DEBUG: Could not generate using {:?} + {:?}: {}", res1, res2, e);
+        //
+        //                             result = Err("Couldn't combine resource".to_string());
+        //                             // self.bag.add_to_bag(ResourceType::Basic(from_generic_type_to_basic(res1).unwrap()));
+        //                             // self.bag.add_to_bag(ResourceType::Basic(from_generic_type_to_basic(res2).unwrap()));
+        //                         }
+        //                     }
+        //                 }
+        //                 msg => {
+        //                     println!("Received unexpected message: {:?} while waiting for CombineResourceResponse", msg);
+        //                     result = Err("Couldn't combine resource".to_string());
+        //                 }
+        //             }
+        //
+        //             self.to_orchestrator
+        //                 .send(ExplorerToOrchestrator::CombineResourceResponse {
+        //                     explorer_id: self.explorer_id,
+        //                     generated: result,
+        //                 })
+        //                 .unwrap();
+    //             }
+    //         }
+    //     }
+    // }
 
     fn get_bag(&self) {
         self.to_orchestrator
@@ -356,22 +507,45 @@ impl ExplorerAI for ExplorerBase {
 
         let to_planet_guard = self.to_planet.read().unwrap();
         let from_planet_guard = self.from_planet.read().unwrap();
-        if let Some(to_planet) = to_planet_guard.as_ref() {
-            to_planet
-                .send(ExplorerToPlanet::AvailableEnergyCellRequest {
-                    explorer_id: self.explorer_id,
-                })
-                .unwrap();
-            if let Some(from_planet) = from_planet_guard.as_ref() {
-                let msg = from_planet.recv().unwrap();
-                match msg {
-                    PlanetToExplorer::AvailableEnergyCellResponse { available_cells } => {
-                        available = available_cells;
+
+        if let Some(to_planet) = to_planet_guard.as_ref() && let Some(from_planet) = from_planet_guard.as_ref() {
+            let resp = send_message_to_planet_with_timeout(to_planet, from_planet, ExplorerToPlanet::AvailableEnergyCellRequest {
+                explorer_id: self.explorer_id,
+            });
+
+            match resp {
+                Some(msg) => {
+                    match msg {
+                        PlanetToExplorer::AvailableEnergyCellResponse { available_cells } => {
+                            available = available_cells;
+                        }
+                        msg => {
+                            println!("Unexpected message received while waiting for AvailableEnergyCellResponse: {:?}", msg);
+                        }
                     }
-                    _ => {}
                 }
+                None => {}
             }
         }
+
+        // if let Some(to_planet) = to_planet_guard.as_ref() {
+        //     to_planet
+        //         .send(ExplorerToPlanet::AvailableEnergyCellRequest {
+        //             explorer_id: self.explorer_id,
+        //         })
+        //         .unwrap();
+        //     if let Some(from_planet) = from_planet_guard.as_ref() {
+        //         let msg = from_planet.recv().unwrap();
+        //         match msg {
+        //             PlanetToExplorer::AvailableEnergyCellResponse { available_cells } => {
+        //                 available = available_cells;
+        //             }
+        //             msg => {
+        //                 println!("Unexpected message received while waiting for AvailableEnergyCellResponse: {:?}", msg);
+        //             }
+        //         }
+        //     }
+        // }
 
         available
     }

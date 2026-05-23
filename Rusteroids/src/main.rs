@@ -32,7 +32,7 @@ async fn main() {
     {
         use crate::modules::orchestrator::explorer_initializer::ExplorerInitializer;
         let mut orch_write = shared_orch.write().unwrap();
-        orch_write.initialize_explorers(vec![2,3], shared_orch.clone());
+        orch_write.initialize_explorers(vec![2, 3, 4], shared_orch.clone());
     }
 
     let orch_for_run = shared_orch.clone();
