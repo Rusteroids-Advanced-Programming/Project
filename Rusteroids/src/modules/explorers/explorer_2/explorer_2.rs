@@ -19,7 +19,7 @@ use crate::modules::explorer_utils::recipes::{get_complex_shopping_list, get_sho
 use crate::modules::explorer_utils::resource_types::get_all_complex_resource_types;
 use crate::modules::explorer_utils::tasks::{Task, TaskState};
 use crate::modules::explorers::common_tasks::craft_all::CraftAllTask;
-use crate::modules::explorers::explorer_1::tasks::visit_all_planet::TotalPlanetsVisitedTask;
+use crate::modules::explorers::explorer_2::tasks::visit_all_edges::TotalEdgesVisitedTask;
 use crate::modules::manual_explorer::bag_type::{BagType, DummyBag};
 
 
@@ -34,16 +34,16 @@ pub type MissingComplexResources = HashMap<ComplexResourceType, usize>;
 // - 5 scelgo di muovermi sul pianeta che permette o il crafting o l'estrazione di risorse che servono a completare la task
 
 
-pub struct Explorer1 {
+pub struct Explorer2 {
     pub base: RwLock<ExplorerBase>,
-    pub tot_visits_task: RwLock<TotalPlanetsVisitedTask>,
+    pub tot_edges_task: RwLock<TotalEdgesVisitedTask>,
     pub craft_all_task: RwLock<CraftAllTask>,
     pub dummy_bag: RwLock<DummyBag>,
     pub explorer_map: RwLock<ExplorerMap>,
     pub prev_planet: RwLock<ID>
 }
 
-impl Explorer1 {
+impl Explorer2 {
     pub fn new(
         explorer_id: ID,
         current_planet_id: ID,
@@ -65,7 +65,7 @@ impl Explorer1 {
 
         Self {
             base,
-            tot_visits_task: RwLock::new(TotalPlanetsVisitedTask::new(120)),
+            tot_edges_task: RwLock::new(TotalEdgesVisitedTask::new(48)),
             craft_all_task: RwLock::new(CraftAllTask::new()),
             dummy_bag: RwLock::new(DummyBag::new(HashMap::new(), HashMap::new())),
             explorer_map: RwLock::new(ExplorerMap::new()),
@@ -240,7 +240,7 @@ impl Explorer1 {
                         println!("CONTROLLO SE HO GIà CRAFTATO {:?}", combination);
                         let qty_needed = missing_complex_resources.get(&combination).unwrap_or(&0);
                         if qty_needed > &0 {
-                        //if !task_state.get(combination).unwrap() {
+                            //if !task_state.get(combination).unwrap() {
                             num_cells = base_guard.ask_available_cells();
                             println!("DEBUG: (DI NUOVO) Celle disponibili {:?}", num_cells);
                             if num_cells > 0 {
@@ -279,14 +279,14 @@ impl Explorer1 {
     }
 
 
-        // let bag_guard = base_guard.bag.read().unwrap();
-        // let combinations_guard = base_guard.combinations.read().unwrap();
-        // if combinations_guard.is_empty() {
-        // }
+    // let bag_guard = base_guard.bag.read().unwrap();
+    // let combinations_guard = base_guard.combinations.read().unwrap();
+    // if combinations_guard.is_empty() {
+    // }
     // }
 }
 
-impl AIHandlers for Explorer1 {
+impl AIHandlers for Explorer2 {
     fn start_ai_handler(&self) {}
 
     fn reset_ai_handler(&self) {}
@@ -308,14 +308,18 @@ impl AIHandlers for Explorer1 {
     }
 
     fn move_to_planet_handler(&self) {
-        self.tot_visits_task.write().unwrap().update_progress()
+        if !self.explorer_map.read().unwrap().is_edge_visited(&self.prev_planet.read().unwrap(), &self.get_base().current_planet_id.read().unwrap()) {
+            self.tot_edges_task.write().unwrap().update_progress();
+            println!("Aggiungo arco visitato {} - {}", self.prev_planet.read().unwrap().clone(), self.get_base().current_planet_id.read().unwrap().clone());
+            self.explorer_map.write().unwrap().visit_edge(self.prev_planet.read().unwrap().clone(), self.get_base().current_planet_id.read().unwrap().clone());
+        }
     }
 }
 
-impl ExplorerBehaviour for Explorer1 {}
+impl ExplorerBehaviour for Explorer2 {}
 
 
-impl Explorer for Explorer1 {
+impl Explorer for Explorer2 {
     fn get_base(&self) -> RwLockReadGuard<ExplorerBase> {
         self.base.read().unwrap()
     }
@@ -369,7 +373,7 @@ impl Explorer for Explorer1 {
             let task_state = task_guard.get_state();
             if let TaskState::Finished = task_state {
                 println!("Craftato tutto CAPO");
-                let task2_guard = self.tot_visits_task.read().unwrap();
+                let task2_guard = self.tot_edges_task .read().unwrap();
                 let mut task2_state = task2_guard.get_state().clone();
                 drop(task2_guard);
 
@@ -398,21 +402,34 @@ impl Explorer for Explorer1 {
                                 let neighbours = base_guard.neighbours.read().unwrap();
                                 if neighbours.len() == 0 {
                                     println!("NUN POSSO PIU ESPLORARE LA GALASSIA MANNAC");
-                                    let mut task2_guard = self.tot_visits_task.write().unwrap();
+                                    let mut task2_guard = self.tot_edges_task.write().unwrap();
                                     task2_guard.update_state(TaskState::Uncompletable);
                                 } else {
-                                    println!("STO ESPLORANDO LA GALASSIA");
-                                    let next_planet = neighbours[get_random_index(neighbours.len())];
-                                    drop(neighbours);
+                                    println!("STO ESPLORANDO LA GALASSIA e ho visitato {} Archi", self.explorer_map.read().unwrap().get_num_discovered_edges());
+
+                                    let mut next_planet = neighbours[get_random_index(neighbours.len())];
                                     let current_planet = base_guard.current_planet_id.read().unwrap();
-                                    println!("VADO SU PIANETA : {:?} e intanto sono su Pianeta #{}", next_planet, current_planet);
+
+                                    for neig in neighbours.iter() {
+                                        let explorer_map_guard = self.explorer_map.read().unwrap();
+                                        if ! explorer_map_guard.is_edge_visited(&current_planet, neig) {
+                                            next_planet = neig.clone();
+                                            println!("TROVATO ARCO NON VISITATO, DA {} A {}", current_planet, next_planet);
+                                            break;
+                                        }
+                                    }
+
+                                    drop(neighbours);
+
+                                    //println!("VADO SU PIANETA : {:?} e intanto sono su Pianeta #{}", next_planet, current_planet);
                                     drop(current_planet);
                                     // drop(base_guard);
-                                    // self.get_base().travel_request(next_planet);
-                                    base_guard.travel_request(next_planet);
+                                    *self.prev_planet.write().unwrap() = self.get_base().current_planet_id.read().unwrap().clone();
+                                    self.get_base().travel_request(next_planet);
+                                    // base_guard.travel_request(next_planet);
                                 }
 
-                                let task2_guard = self.tot_visits_task.read().unwrap();
+                                let task2_guard = self.tot_edges_task.read().unwrap();
                                 task2_state = task2_guard.get_state().clone();
                                 drop(task2_guard);
                             }

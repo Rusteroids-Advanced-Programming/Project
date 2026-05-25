@@ -7,12 +7,33 @@ use crate::modules::read_galaxy::graph::{Graph, Node};
 #[derive(Debug)]
 pub struct ExplorerMap{
     pub infos: HashMap<ID, PlanetInfos>,
-    pub graph: Graph<ID>
+    pub graph: Graph<ID>,
+    pub visited_edges: HashSet<(ID, ID)>,
 }
 
 impl ExplorerMap{
     pub fn new() -> ExplorerMap {
-        Self{infos: HashMap::new(), graph: Graph::new()}
+        Self{ infos: HashMap::new(), graph: Graph::new(), visited_edges: HashSet::new() }
+    }
+
+    fn get_edge_key(&self, a: ID, b: ID) -> (ID, ID) {
+        if a < b { (a, b) } else { (b, a) }
+    }
+
+    /// Segna un arco come visitato
+    pub fn visit_edge(&mut self, from: ID, to: ID) {
+        let edge = self.get_edge_key(from, to);
+        self.visited_edges.insert(edge);
+    }
+
+    /// Controlla se un arco è stato visitato
+    pub fn is_edge_visited(&self, from: &ID, to: &ID) -> bool {
+        let edge = self.get_edge_key(from.clone(), to.clone());
+        self.visited_edges.contains(&edge)
+    }
+
+    pub fn get_num_discovered_edges(&self) -> usize {
+        self.visited_edges.len()
     }
 
     pub fn is_planet_discovered(&self, planet_id: &ID) -> bool {

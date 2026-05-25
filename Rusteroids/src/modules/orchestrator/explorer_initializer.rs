@@ -17,6 +17,7 @@ use std::time::Duration;
 use crate::modules::explorer_utils::explorer::{Explorer, ExplorerBehaviour};
 use crate::modules::explorer_utils::handlers::AIHandlers;
 use crate::modules::explorers::explorer_1::explorer_1::Explorer1;
+use crate::modules::explorers::explorer_2::explorer_2::Explorer2;
 
 #[allow(dead_code)]
 pub trait ExplorerInitializer {
@@ -62,7 +63,8 @@ impl ExplorerInitializer for Orchestrator {
             match normalized_id {
                 1 => { explorer = Arc::new(ManualExplorer::new(expl_id, spawn_planet, rx1, tx2)); }
                 2 => { explorer = Arc::new(Explorer1::new(expl_id, spawn_planet, rx1, tx2)); }
-                _ => { explorer = Arc::new(Explorer1::new(expl_id, spawn_planet, rx1, tx2)); }
+                3 => { explorer = Arc::new(Explorer2::new(expl_id, spawn_planet, rx1, tx2)); }
+                _ => { explorer = Arc::new(Explorer2::new(expl_id, spawn_planet, rx1, tx2)); }
             }
 
 
