@@ -30,7 +30,18 @@ interface GalaxyResponse {
 }
 
 let selectedPlanetId: number | null = null;
+let visualizerIntervalId: number | null = null;
+let logsIntervalId: number | null = null;
 
+const mainMenu = document.getElementById('main-menu')!;
+const menuInitial = document.getElementById('menu-initial')!;
+const menuDifficulty = document.getElementById('menu-difficulty')!;
+const gameInterface = document.getElementById('game-interface')!;
+const btnStartGame = document.getElementById('btn-start-game')!;
+const diffButtons = document.querySelectorAll('.btn-diff');
+
+const gameOverScreen = document.getElementById('game-over-screen')!;
+const btnRestart = document.getElementById('btn-restart')!;
 
 function renderGalaxy(planets: PlanetDataDTO[], explorers: ExplorerDataDTO[]) {
     const container = document.getElementById('galaxy-container');
@@ -43,13 +54,11 @@ function renderGalaxy(planets: PlanetDataDTO[], explorers: ExplorerDataDTO[]) {
     canvas.height = height;
     const ctx = canvas.getContext('2d')!;
 
-
     container.querySelectorAll('.planet-wrapper').forEach(el => el.remove());
 
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = Math.min(width, height) / 2 - 80;
-
 
     const planetPositions = new Map<number, {x: number, y: number}>();
     planets.forEach((p, i) => {
@@ -60,21 +69,31 @@ function renderGalaxy(planets: PlanetDataDTO[], explorers: ExplorerDataDTO[]) {
     });
 
 
+    ctx.setLineDash([]);
     ctx.strokeStyle = "rgba(52, 152, 219, 0.2)";
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
+
+    const drawnConnections = new Set<string>();
+
     planets.forEach(p => {
         const start = planetPositions.get(p.id)!;
         p.neighbors.forEach(neighborId => {
-            const end = planetPositions.get(neighborId);
-            if (end) {
-                ctx.beginPath();
-                ctx.moveTo(start.x, start.y);
-                ctx.lineTo(end.x, end.y);
-                ctx.stroke();
+            const connectionKey = [p.id, neighborId].sort().join('-');
+
+            if (!drawnConnections.has(connectionKey)) {
+                const end = planetPositions.get(neighborId);
+                if (end) {
+                    ctx.beginPath();
+                    ctx.moveTo(start.x, start.y);
+                    ctx.lineTo(end.x, end.y);
+                    ctx.stroke();
+                    drawnConnections.add(connectionKey);
+                }
             }
         });
     });
+    ctx.setLineDash([]);
 
     planets.forEach(p => {
         const pos = planetPositions.get(p.id)!;
@@ -87,8 +106,13 @@ function renderGalaxy(planets: PlanetDataDTO[], explorers: ExplorerDataDTO[]) {
         planetWrapper.style.transform = 'translate(-50%, -50%)';
 
         const img = document.createElement('img');
-        img.src = p.alive ? `media/${planet_name}.gif` : 'media/dead_planet.gif';
+        const fileName = planet_name.toLowerCase();
+        img.src = p.alive ? `media/${fileName}.gif` : 'media/dead_planet.gif';
         img.className = `planet-sprite ${p.alive ? '' : 'dead-animation'}`;
+
+        img.onerror = () => {
+            img.src = 'media/planet.gif';
+        };
 
         if (selectedPlanetId === p.id) {
             img.style.boxShadow = "0 0 20px #e74c3c";
@@ -139,7 +163,6 @@ function showDetails(p: PlanetDataDTO, allExplorers: ExplorerDataDTO[]) {
         ? p.neighbors.join(', ')
         : "Nessun vicino";
 
-
     const baseContainer = document.getElementById('det-res-base')!;
     if (p.resources_base.length > 0) {
         baseContainer.innerHTML = p.resources_base
@@ -148,7 +171,6 @@ function showDetails(p: PlanetDataDTO, allExplorers: ExplorerDataDTO[]) {
     } else {
         baseContainer.innerHTML = '<span style="color: #666; font-style: italic;">Nessuna</span>';
     }
-
 
     const complexContainer = document.getElementById('det-res-complex')!;
     if (p.resources_complex.length > 0) {
@@ -160,14 +182,12 @@ function showDetails(p: PlanetDataDTO, allExplorers: ExplorerDataDTO[]) {
     }
 
     const rocketEl = document.getElementById('det-rockets-ready')!;
-
     if (p.has_rocket) {
         rocketEl.innerHTML = '<span class="status-ready">PRONTO</span>';
     } else {
         rocketEl.innerHTML = '<span class="status-empty">NON DISPONIBILE</span>';
     }
 }
-
 
 function closePlanetDetails() {
     const box = document.getElementById('planet-details');
@@ -178,7 +198,6 @@ function closePlanetDetails() {
 }
 
 document.getElementById('close-details')?.addEventListener('click', closePlanetDetails);
-
 
 function updateExplorersPanel(explorers: ExplorerDataDTO[]) {
     const container = document.getElementById('explorers-status-container');
@@ -208,15 +227,12 @@ function updateExplorersPanel(explorers: ExplorerDataDTO[]) {
 }
 
 function renderInventory(bag: string[]): string {
-
     const counts: { [key: string]: number } = {};
-
     bag.forEach(item => {
         counts[item] = (counts[item] || 0) + 1;
     });
 
     const presentResources = Object.keys(counts).sort();
-
     if (presentResources.length === 0) {
         return `<div class="no-res">Zaino vuoto</div>`;
     }
@@ -233,7 +249,6 @@ function renderInventory(bag: string[]): string {
         .join('');
 }
 
-
 async function updateVisualizer() {
     try {
         const response = await fetch('/galaxy');
@@ -244,13 +259,15 @@ async function updateVisualizer() {
         renderGalaxy(data.planets, data.explorers);
         updateExplorersPanel(data.explorers);
 
-
         if (selectedPlanetId !== null) {
             const currentPlanet = data.planets.find(p => p.id === selectedPlanetId);
             if (currentPlanet) {
-
                 showDetails(currentPlanet, data.explorers);
             }
+        }
+
+        if (data.explorers.length > 0 && data.explorers.every(ex => !ex.alive)) {
+            triggerGameOver();
         }
     } catch (error) {
         console.error("Errore nel recupero dati galassia:", error);
@@ -277,8 +294,57 @@ async function updateLogs() {
     } catch (e) { console.error("Errore log:", e); }
 }
 
-setInterval(updateLogs, 500);
+function triggerGameOver() {
+    console.log("GAME OVER DETECTED");
 
-setInterval(updateVisualizer, 1000);
 
-updateVisualizer();
+    if (visualizerIntervalId) clearInterval(visualizerIntervalId);
+    if (logsIntervalId) clearInterval(logsIntervalId);
+
+
+    gameInterface.classList.add('hidden');
+    gameOverScreen.classList.remove('hidden');
+}
+
+function startGameEngine() {
+    gameOverScreen.classList.add('hidden');
+
+    updateVisualizer();
+    updateLogs();
+
+    logsIntervalId = window.setInterval(updateLogs, 500);
+    visualizerIntervalId = window.setInterval(updateVisualizer, 1000);
+}
+
+btnStartGame.addEventListener('click', () => {
+    menuInitial.classList.add('hidden');
+    menuDifficulty.classList.remove('hidden');
+});
+
+btnRestart.addEventListener('click', () => {
+    window.location.reload();
+});
+
+diffButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+        const target = e.currentTarget as HTMLButtonElement;
+        const difficulty = target.getAttribute('data-diff')!;
+
+        console.log(`Difficoltà inizializzata: ${difficulty}`);
+
+        try {
+            await fetch('/start-game', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ difficulty })
+            });
+        } catch (err) {
+            console.error("Errore sincronizzazione backend:", err);
+        }
+
+        mainMenu.classList.add('hidden');
+        gameInterface.classList.remove('hidden');
+
+        startGameEngine();
+    });
+});

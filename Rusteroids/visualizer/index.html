@@ -6,41 +6,65 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="planet-details" class="details-box hidden">
-    <button id="close-details" class="close-btn">&times;</button>
-    <h2 id="det-name">-</h2>
-    <p>Stato: <span id="det-alive">-</span></p>
-    <p>Tipo: <span id="det-type">-</span></p>
-    <p>Celle di Energia: <span id="det-energy">-</span></p>
 
-    <div class="resource-section">
-        <strong>Estraibili:</strong>
-        <div id="det-res-base" class="badge-container"></div>
+<div id="main-menu" class="menu-container">
+    <h1 class="menu-title">RUSTEROIDS</h1>
+
+    <div id="menu-initial">
+        <button class="menu-btn" id="btn-start-game">AVVIA GIOCO</button>
     </div>
 
-    <div class="resource-section">
-        <strong>Craftabili:</strong>
-        <div id="det-res-complex" class="badge-container"></div>
+    <div id="menu-difficulty" class="hidden">
+        <h2 class="menu-subtitle">SELEZIONA DIFFICOLTA</h2>
+        <button class="menu-btn btn-diff" data-diff="easy">FACILE</button>
+        <button class="menu-btn btn-diff" data-diff="medium">NORMALE</button>
+        <button class="menu-btn btn-diff" data-diff="hard">DIFFICILE</button>
     </div>
-    <p><strong>Difesa Razzo:</strong> <span id="det-rockets-ready">-</span></p>
-    <p>Razzi usati: <span id="det-rockets">-</span></p>
-    <p>Vicini: <span id="det-neighbors">-</span></p>
 </div>
 
-<div id="log-container">
-    <div class="log-header">ORCHESTRATOR LOGS</div>
-    <div id="log-scroll-area">
-        <div id="log-content">
+<div id="game-over-screen" class="menu-container game-over-theme hidden">
+    <h1 class="menu-title">GAME OVER</h1>
+    <p class="menu-subtitle">TUTTI GLI EXPLORER SONO STATI ANNIENTATI</p>
+    <button class="menu-btn" id="btn-restart">TORNA AL MENU</button>
+</div>
+
+<div id="game-interface" class="hidden">
+
+    <div id="planet-details" class="details-box hidden">
+        <button id="close-details" class="close-btn">&times;</button>
+        <h2 id="det-name">-</h2>
+        <p>Stato: <span id="det-alive">-</span></p>
+        <p>Tipo: <span id="det-type">-</span></p>
+        <p>Celle di Energia: <span id="det-energy">-</span></p>
+
+        <div class="resource-section">
+            <strong>Estraibili:</strong>
+            <div id="det-res-base" class="badge-container"></div>
+        </div>
+
+        <div class="resource-section">
+            <strong>Craftabili:</strong>
+            <div id="det-res-complex" class="badge-container"></div>
+        </div>
+        <p><strong>Difesa Razzo:</strong> <span id="det-rockets-ready">-</span></p>
+        <p>Razzi usati: <span id="det-rockets">-</span></p>
+        <p>Vicini: <span id="det-neighbors">-</span></p>
+    </div>
+
+    <div id="log-container">
+        <div class="log-header">ORCHESTRATOR LOGS</div>
+        <div id="log-scroll-area">
+            <div id="log-content"></div>
         </div>
     </div>
-</div>
 
-<div id="explorers-status-container" class="explorers-side-panel">
-</div>
+    <div id="explorers-status-container" class="explorers-side-panel"></div>
 
-<main id="galaxy-container">
-    <canvas id="connections-canvas"></canvas>
-</main>
+    <main id="galaxy-container">
+        <canvas id="connections-canvas"></canvas>
+    </main>
+
+</div>
 
 <script src="dist/index.js"></script>
 </body>

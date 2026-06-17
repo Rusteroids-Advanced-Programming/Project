@@ -3,6 +3,7 @@ pub mod graph;
 pub mod planet_map;
 pub mod read_galaxy_file;
 pub mod stats;
+pub mod galaxy_generator;
 
 mod tests {
     use crate::modules::read_galaxy::build_data_structs;

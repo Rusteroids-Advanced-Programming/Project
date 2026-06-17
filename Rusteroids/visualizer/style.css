@@ -220,3 +220,80 @@ body {
     border: 1px solid white;
     pointer-events: none;
 }
+
+/* MENU */
+.menu-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 500px;
+    background-color: #000000;
+    border: 6px solid #ffffff;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 10px 10px 0px rgba(0, 0, 0, 0.8);
+    z-index: 9999;
+}
+
+.menu-title {
+    font-size: 22px;
+    color: #ffffff;
+    margin-bottom: 40px;
+    text-shadow: 3px 3px 0px #3498db;
+}
+
+.menu-subtitle {
+    font-size: 14px;
+    color: #f1c40f;
+    margin-bottom: 25px;
+}
+
+.menu-btn {
+    display: block;
+    width: 100%;
+    background-color: #000000;
+    color: #ffffff;
+    border: 4px solid #ffffff;
+    padding: 15px;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+}
+
+.menu-btn:hover {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+
+.btn-diff[data-diff="easy"]:hover { background-color: #2ecc71; color: #000; }
+.btn-diff[data-diff="medium"]:hover { background-color: #f1c40f; color: #000; }
+.btn-diff[data-diff="hard"]:hover { background-color: #e74c3c; color: #000; }
+
+
+/* GAME OVER */
+.game-over-theme {
+    border-color: #e74c3c !important;
+}
+
+.game-over-theme .menu-title {
+    text-shadow: 3px 3px 0px #e74c3c;
+}
+
+.game-over-theme .menu-subtitle {
+    color: #ffffff;
+}
+
+.game-over-theme .menu-btn {
+    border-color: #e74c3c;
+    color: #e74c3c;
+}
+
+.game-over-theme .menu-btn:hover {
+    background-color: #e74c3c;
+    color: #ffffff;
+    cursor: pointer;
+}

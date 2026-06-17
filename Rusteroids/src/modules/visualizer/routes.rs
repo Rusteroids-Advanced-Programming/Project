@@ -1,10 +1,57 @@
 use std::sync::{Arc, RwLock};
 use axum::extract::State;
 use axum::Json;
+use axum::http::StatusCode;
+use serde::Deserialize;
 use crate::modules::visualizer::dto::GalaxyResponse;
 use crate::modules::orchestrator::orchestator::Orchestrator;
 use crate::modules::orchestrator::orchestrator_ai::OrchestratorAI;
 use crate::modules::read_galaxy::stats::{ExplorerDataDTO, PlanetDataDTO, PlanetStatsDTO};
+use crate::modules::read_galaxy::galaxy_generator::generate_galaxy_file;
+
+#[derive(Deserialize)]
+pub struct StartGamePayload {
+    pub difficulty: String,
+}
+
+pub async fn start_game(
+    State(orch): State<Arc<RwLock<Orchestrator>>>,
+    Json(payload): Json<StartGamePayload>,
+) -> Result<&'static str, StatusCode> {
+
+    let diff_u8 = match payload.difficulty.as_str() {
+        "easy" => 0,
+        "medium" => 1,
+        "hard" => 2,
+        "peaceful" => 3,
+        _ => 1,
+    };
+
+    println!(" Difficoltà scelta : {} ({})", payload.difficulty, diff_u8);
+
+    if let Err(e) = generate_galaxy_file(30) {
+        eprintln!("=== ERRORE CRITICO: Impossibile generare galaxy-initialization.txt: {:?} ===", e);
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    use crate::modules::orchestrator::initializer::Initializer;
+    use crate::modules::orchestrator::explorer_initializer::ExplorerInitializer;
+
+    {
+        let mut orch_write = orch.write().expect("Lock Orchestrator poisoned in write");
+
+        orch_write.initialize();
+        orch_write.initialize_explorers(vec![2, 3], orch.clone());
+    }
+
+    let orch_for_run = orch.clone();
+    std::thread::spawn(move || {
+        println!("=== SYSTEM: Thread di simulazione dell'Orchestrator AVVIATO ===");
+        orch_for_run.read().expect("Lock Orchestrator poisoned in run thread").run();
+    });
+
+    Ok("OK")
+}
 
 pub async fn get_logs(State(orch): State<Arc<RwLock<Orchestrator>>>) -> Json<Vec<String>> {
     let logs = orch.read().unwrap().logs.read().unwrap().clone();
@@ -19,7 +66,7 @@ pub async fn get_galaxy_status(State(orch): State<Arc<RwLock<Orchestrator>>>) ->
         (
             stats_guard.clone(),
             orch_guard.planet_resources.clone(),
-            orch_guard.explorer_planet.read().unwrap().clone(), // da checkare, read.unwrap di un rwlock
+            orch_guard.explorer_planet.read().unwrap().clone(),
         )
     };
 
@@ -93,7 +140,6 @@ pub async fn get_galaxy_status(State(orch): State<Arc<RwLock<Orchestrator>>>) ->
             let is_alive = *guard.alive.read().unwrap();
 
             let bag_content = if is_alive {
-                //let bag_guard = explorer_obj.dummy_bag.read().unwrap();
                 let bag = guard.bag.read().unwrap().to_dummy();
                 let mut content = Vec::new();
                 for (res_type, count) in &bag.basic {
