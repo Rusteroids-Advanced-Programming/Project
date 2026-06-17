@@ -237,6 +237,10 @@ impl Explorer for ManualExplorer {
             }
         }
     }
+
+    fn all_tasks_finished(&self) -> bool {
+        false
+    }
 }
 
 impl ExplorerBehaviour for ManualExplorer{}

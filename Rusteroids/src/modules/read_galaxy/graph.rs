@@ -43,26 +43,18 @@ impl<T: PartialEq> Graph<T> {
     }
 
     pub fn remove_node(&mut self, value: T) {
-        let mut i: usize = 0;
-        let mut node_index: usize = 0;
-        for node in &self.nodes {
-            if node.read().unwrap().value == value {
-                node_index = i.clone();
-            } else {
-                let mut j: usize = 0;
-                let mut guard = node.write().unwrap();
-                for adj_node in &guard.adjacent_nodes {
-                    let tmp = adj_node.read().unwrap();
-                    if tmp.value == value {
-                        break;
-                    }
-                    j = j + 1;
-                }
-                guard.adjacent_nodes.remove(j);
-            }
-            i += 1;
+        // 1. Remove the node itself from the graph's main node list
+        if let Some(index) = self.nodes.iter().position(|node| node.read().unwrap().value == value) {
+            self.nodes.remove(index);
         }
-        self.nodes.remove(node_index);
+
+        // 2. Safely remove any references to this node from all remaining nodes' adjacency lists
+        for node in &self.nodes {
+            let mut guard = node.write().unwrap();
+            guard.adjacent_nodes.retain(|adj_node| {
+                adj_node.read().unwrap().value != value
+            });
+        }
     }
 
     pub fn is_node_in_graph(&self, value: &T) -> bool {
@@ -119,5 +111,26 @@ impl<T: fmt::Display> fmt::Debug for Graph<T> {
             writeln!(f, "  {} -> [{}]", n.value, adj.join(", "))?;
         }
         writeln!(f, "}}")
+    }
+}
+
+#[cfg(test)]
+mod test_graph {
+    use crate::modules::read_galaxy::graph::Graph;
+
+    #[test]
+    fn test_graph() {
+        let mut graph = Graph::new();
+        let a = graph.add_node("A");
+        let b = graph.add_node("B");
+        let c = graph.add_node("C");
+
+        graph.add_adj_node(&a, c);
+        graph.remove_node("B");
+        assert_eq!("Graph {
+  A -> [C]
+  C -> []
+}
+", format!("{:?}", graph));
     }
 }

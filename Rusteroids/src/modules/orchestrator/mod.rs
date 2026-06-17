@@ -21,35 +21,22 @@ mod tests {
         let mut orch = Orchestrator::new(diff);
         orch.initialize();
 
-        // println!("{:?}", orch.planet_channels);
-        println!("{:?}", orch.planet_threads);
-        // println!("{:?}", orch.planet_map);
-        // orch.start_planet_ai(8);
-        let mut id = orch.send_sunray(8);
-        println!("id del sunray {:?}", id);
-        id = orch.send_sunray(8);
+        let mut _id = orch.send_sunray(8);
+        _id = orch.send_sunray(8);
 
         sleep(Duration::from_secs(1));
-        println!("id del sunray {:?}", id);
         let state = orch.get_planet_state(8).unwrap();
-        println!("{:?}", state);
 
         orch.send_asteroid(8);
         sleep(Duration::from_secs(1));
 
-        orch.send_asteroid(8);
-        sleep(Duration::from_secs(1));
+        let guard = orch.stats_map.read().unwrap();
+        let stats = guard.get(&8).unwrap();
 
-        orch.send_asteroid(8);
-
-        sleep(Duration::from_secs(1));
-
-        orch.send_sunray(8);
-
-        // println!("{:?}", orch.planet_channels.get(&1));
-        println!("{:?}", orch.planet_threads);
-
-        // let planet_1 = orch.planet_map.get_planet_by_id(1).unwrap();
+        assert_eq!("DummyPlanetState { energy_cells: [true, true, false, false, false], charged_cells_count: 2, has_rocket: false }", format!("{:?}", state));
+        assert_eq!(false, stats.alive);
+        assert_eq!(2, stats.sunray_count);
+        assert_eq!(1, stats.asteroid_count as i32);
     }
 
     #[test]
@@ -63,9 +50,7 @@ mod tests {
         let arc_orch = Arc::new(RwLock::new(orch));
         arc_orch.write().unwrap().initialize();
         let vec_explorers = vec![1];
-        // for i in 1..9 {
-        //     arc_orch.read().unwrap().send_sunray(i);
-        // }
+
 
         let orc_clone1 = arc_orch.clone();
         let orc_clone2 = arc_orch.clone();
@@ -78,16 +63,7 @@ mod tests {
             .write()
             .unwrap()
             .initialize_explorers(vec_explorers, orc_clone2);
-        //
-        // println!("{:?}", orch.explorer_threads);
-        // println!("{:?}", orch.explorer_channels);
-        //
-        // orch.send_sunray(8);
-        // orch.send_sunray(8);
-        //
-        // orch.start_explorer(10);
-        //
-        // orch.generate_resource(10, BasicResourceType::Carbon); //--> SENZA QUESTA NON VA UN CAZZO DIO MAIALE NON VA AVANTI,. I NEIGBOURS NON VENGONO SETTATi IN OGNI CASO
+
         sleep(Duration::from_secs(60));
     }
 }

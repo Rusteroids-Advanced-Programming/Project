@@ -134,6 +134,8 @@ pub trait Explorer {
     }
     
     fn handle_explorer(&self);
+
+    fn all_tasks_finished(&self) -> bool;
 }
 
 pub trait ExplorerBehaviour: Explorer + AIHandlers + Send + Sync{}

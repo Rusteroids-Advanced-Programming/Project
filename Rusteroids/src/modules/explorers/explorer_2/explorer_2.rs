@@ -485,6 +485,15 @@ impl Explorer for Explorer2 {
             // }
         }
     }
+
+    fn all_tasks_finished(&self) -> bool {
+        let craft_all_state = self.craft_all_task.read().unwrap().get_state().clone();
+        let num_edges_state = self.tot_edges_task.read().unwrap().get_state().clone();
+        match (craft_all_state, num_edges_state) {
+            (TaskState::Finished, TaskState::Finished) => true,
+            _ => false
+        }
+    }
 }
 
 fn get_random_index(length: usize) -> usize {
