@@ -103,7 +103,6 @@ impl StatsMap {
 
     /// Marks a planet as no longer alive; does nothing if the planet is unknown.
     pub fn planet_killed(&mut self, id: ID) {
-        println!("DEBUG: planet_killed {}", id);
         if self.map.contains_key(&id) {
             let tmp = self.map.get_mut(&id).unwrap();
             tmp.alive = false;

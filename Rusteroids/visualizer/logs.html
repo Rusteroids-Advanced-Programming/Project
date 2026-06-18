@@ -4,25 +4,42 @@
     <meta charset="UTF-8">
     <title>Rusteroids Logs</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        html, body.logs-body {
+            overflow: auto !important;
+            height: auto !important;
+            max-height: none !important;
+            position: relative !important;
+        }
+
+
+        .logs-container {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body class="logs-body">
 
 <h1 class="logs-title">LOGS</h1>
 
-<table class="logs-table">
-    <thead>
-    <tr>
-        <th>TIMESTAMP</th>
-        <th>CANALE</th>
-        <th>EVENTO</th>
-        <th>SENDER</th>
-        <th>RECEIVER</th>
-        <th>MESSAGGIO</th>
-    </tr>
-    </thead>
-    <tbody id="log-rows">
-    </tbody>
-</table>
+<div class="logs-container">
+    <table class="logs-table">
+        <thead>
+        <tr>
+            <th>TIMESTAMP</th>
+            <th>CHANNEL</th>
+            <th>EVENT</th>
+            <th>SENDER</th>
+            <th>RECEIVER</th>
+            <th>MESSAGE</th>
+        </tr>
+        </thead>
+        <tbody id="log-rows">
+        </tbody>
+    </table>
+</div>
 
 <script>
     async function loadStructuredLogs() {
@@ -49,7 +66,7 @@
                     `;
             }).join('');
         } catch (err) {
-            console.error("Errore nel caricamento dei log:", err);
+            console.error("Logs' loading error:", err);
         }
     }
 

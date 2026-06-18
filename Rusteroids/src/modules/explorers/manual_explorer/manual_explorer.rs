@@ -1,20 +1,22 @@
 use crate::modules::explorer_utils::bag_type::{BagType, DummyBag};
-use common_game::components::resource::{BasicResource, BasicResourceType, ComplexResource, ComplexResourceRequest, ComplexResourceType, GenericResource};
+use crate::modules::explorer_utils::explorer::{Explorer, ExplorerBehaviour};
+use crate::modules::explorer_utils::explorer_ai::ExplorerAI;
+use crate::modules::explorer_utils::explorer_base::ExplorerBase;
+use crate::modules::explorer_utils::handlers::AIHandlers;
+use common_game::components::resource::{
+    BasicResource, BasicResourceType, ComplexResource, GenericResource,
+};
 use common_game::protocols::orchestrator_explorer::{
     ExplorerToOrchestrator, OrchestratorToExplorer,
 };
 use common_game::protocols::planet_explorer::{ExplorerToPlanet, PlanetToExplorer};
 use common_game::utils::ID;
-use crossbeam_channel::{Receiver, Sender, select_biased};
+use crossbeam_channel::{Receiver, Sender};
 use std::collections::{HashMap, HashSet};
 use std::io;
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::thread::sleep;
 use std::time::Duration;
-use crate::modules::explorer_utils::explorer::{Explorer, ExplorerBehaviour};
-use crate::modules::explorer_utils::explorer_ai::ExplorerAI;
-use crate::modules::explorer_utils::explorer_base::ExplorerBase;
-use crate::modules::explorer_utils::handlers::AIHandlers;
 
 /// Interface to wire runtime planet-specific communication crossbeam channels.
 pub trait ExplorerPlanetCommunication {
@@ -29,9 +31,13 @@ impl AIHandlers for ManualExplorer {
 
     fn kill_handler(&self) {}
 
-    fn generate_resource_handler(&self, result: &Option<&BasicResource>) {}
+    fn generate_resource_handler(&self, _result: &Option<&BasicResource>) {}
 
-    fn combine_resource_handler(&self, result: &Result<&ComplexResource, &(String, GenericResource, GenericResource)>) {}
+    fn combine_resource_handler(
+        &self,
+        _result: &Result<&ComplexResource, &(String, GenericResource, GenericResource)>,
+    ) {
+    }
 
     fn move_to_planet_handler(&self) {}
 }
@@ -40,7 +46,7 @@ impl AIHandlers for ManualExplorer {
 /// crafting, and routing commands directly.
 pub struct ManualExplorer {
     pub dummy_bag: RwLock<DummyBag>,
-    pub base: RwLock<ExplorerBase>
+    pub base: RwLock<ExplorerBase>,
 }
 
 impl ManualExplorer {
@@ -63,12 +69,12 @@ impl ManualExplorer {
             RwLock::new(None),
             RwLock::new(Vec::new()),
             RwLock::new(HashSet::new()),
-            RwLock::new(HashSet::new())
+            RwLock::new(HashSet::new()),
         ));
 
         Self {
             dummy_bag: RwLock::new(DummyBag::new(HashMap::new(), HashMap::new())),
-            base
+            base,
         }
     }
 }
@@ -87,13 +93,12 @@ impl ExplorerPlanetCommunication for ManualExplorer {
     }
 }
 
-
 impl Explorer for ManualExplorer {
     fn get_base(&self) -> RwLockReadGuard<ExplorerBase> {
         self.base.read().unwrap()
     }
 
-    fn get_base_mut(&self) -> RwLockWriteGuard<ExplorerBase>  {
+    fn get_base_mut(&self) -> RwLockWriteGuard<ExplorerBase> {
         self.base.write().unwrap()
     }
 
@@ -154,7 +159,10 @@ impl Explorer for ManualExplorer {
                                 tmp.trim().parse().expect("Please insert a valid option");
                             let choice = choices.get(&choice).unwrap();
                             println!("Generating {:?}", choice);
-                            base_guard.generate_resource(**choice, |arg: &Option<&BasicResource>| self.generate_resource_handler(arg));
+                            let _ = base_guard
+                                .generate_resource(**choice, |arg: &Option<&BasicResource>| {
+                                    self.generate_resource_handler(arg)
+                                });
                         }
 
                         2 => {
@@ -174,7 +182,15 @@ impl Explorer for ManualExplorer {
                             let input3: usize =
                                 tmp.trim().parse().expect("Please insert a valid option");
                             let resource = options_map.get(&input3).unwrap();
-                            base_guard.combine_resource(**resource, |arg: &Result<&ComplexResource, &(String, GenericResource, GenericResource)> | self.combine_resource_handler(arg));
+                            base_guard.combine_resource(
+                                **resource,
+                                |arg: &Result<
+                                    &ComplexResource,
+                                    &(String, GenericResource, GenericResource),
+                                >| {
+                                    self.combine_resource_handler(arg)
+                                },
+                            );
                         }
 
                         _ => {
@@ -196,7 +212,8 @@ impl Explorer for ManualExplorer {
                     let guard = base_guard.neighbours.read().unwrap();
 
                     if guard.contains(&planet_id) {
-                        base_guard.to_orchestrator
+                        base_guard
+                            .to_orchestrator
                             .send(ExplorerToOrchestrator::TravelToPlanetRequest {
                                 explorer_id: base_guard.explorer_id,
                                 current_planet_id: *base_guard.current_planet_id.read().unwrap(),
@@ -225,4 +242,4 @@ impl Explorer for ManualExplorer {
     }
 }
 
-impl ExplorerBehaviour for ManualExplorer{}
+impl ExplorerBehaviour for ManualExplorer {}

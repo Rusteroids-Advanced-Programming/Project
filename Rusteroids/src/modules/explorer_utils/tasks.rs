@@ -2,7 +2,7 @@
 /// and whose state can be queried and updated externally.
 /// The `Progress` type parameter lets each implementor expose its own
 /// progress representation (percentage, step count, custom struct, ...).
-pub trait Task <Progress> {
+pub trait Task<Progress> {
     fn get_state(&self) -> &TaskState;
     fn update_state(&mut self, state: TaskState);
     fn get_progress(&self) -> Progress;
@@ -15,5 +15,5 @@ pub trait Task <Progress> {
 pub enum TaskState {
     Finished,
     Pending,
-    Uncompletable
+    Uncompletable,
 }

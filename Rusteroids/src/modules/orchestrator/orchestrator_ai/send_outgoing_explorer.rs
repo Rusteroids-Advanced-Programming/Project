@@ -1,4 +1,4 @@
-use crate::modules::orchestrator::orchestator::Orchestrator;
+use crate::modules::orchestrator::orchestrator::Orchestrator;
 use common_game::protocols::orchestrator_planet::{OrchestratorToPlanet, PlanetToOrchestrator};
 use common_game::utils::ID;
 
@@ -26,7 +26,7 @@ pub fn send_outgoing_explorer_impl(orch: &Orchestrator, explorer_id: ID) -> bool
         match rx_planet.recv().unwrap() {
             PlanetToOrchestrator::OutgoingExplorerResponse { res, .. } => match res {
                 Ok(_) => true,
-                Err(e) => false,
+                Err(_e) => false,
             },
             _resp => false,
         }

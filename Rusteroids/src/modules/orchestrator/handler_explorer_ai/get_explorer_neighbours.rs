@@ -1,21 +1,12 @@
-use crate::modules::orchestrator::orchestator::Orchestrator;
-use common_game::protocols::orchestrator_explorer::{
-    ExplorerToOrchestrator, OrchestratorToExplorer,
-};
+use crate::modules::orchestrator::orchestrator::Orchestrator;
+use common_game::protocols::orchestrator_explorer::OrchestratorToExplorer;
 use common_game::utils::ID;
 
 /// Computes the list of alive neighbouring planets for the explorer's current planet
 /// and sends it back over the explorer's channel.
 pub fn get_explorer_neighbours_impl(orch: &Orchestrator, expl_id: ID, current_planet_id: ID) {
-    // Only the sender is needed here; the request is assumed to be handled by the caller
     let (tx1, _rx1, _, _) = orch.explorer_channels.get(&expl_id).unwrap();
-    // let msg = rx1.recv().unwrap();
     let mut neighbours = Vec::new();
-    // match msg {
-    //     ExplorerToOrchestrator::NeighborsRequest {
-    //         explorer_id: _explorer_id,
-    //         current_planet_id,
-    //     } => {
     // Acquire a read lock on the stats map, kept alive for the whole lookup below
     let stats_map_guard = orch.stats_map.read().unwrap();
 
@@ -36,8 +27,5 @@ pub fn get_explorer_neighbours_impl(orch: &Orchestrator, expl_id: ID, current_pl
     tx1.send(OrchestratorToExplorer::NeighborsResponse {
         neighbors: neighbours,
     })
-        .unwrap();
+    .unwrap();
 }
-// _ => {}
-// }
-// }

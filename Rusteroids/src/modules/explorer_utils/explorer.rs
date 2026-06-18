@@ -6,16 +6,18 @@
 //! start/kill signal, then enters a loop that dispatches each incoming
 //! message to the matching handler on [`ExplorerBase`].
 
-use std::sync::{Arc, RwLockReadGuard, RwLockWriteGuard};
-use common_game::components::resource::{BasicResource, ComplexResourceRequest};
-use common_game::protocols::orchestrator_explorer::{ExplorerToOrchestrator, OrchestratorToExplorer};
-use crossbeam_channel::select_biased;
+use crate::modules::explorer_utils::bag_type::DummyBag;
 use crate::modules::explorer_utils::explorer_ai::ExplorerAI;
 use crate::modules::explorer_utils::explorer_base::ExplorerBase;
 use crate::modules::explorer_utils::handlers::AIHandlers;
-use crate::modules::explorer_utils::bag_type::DummyBag;
+use common_game::components::resource::BasicResource;
+use common_game::protocols::orchestrator_explorer::{
+    ExplorerToOrchestrator, OrchestratorToExplorer,
+};
+use crossbeam_channel::select_biased;
+use std::sync::{Arc, RwLockReadGuard, RwLockWriteGuard};
 
-const ERROR_ORCH_DISCONNECTED: &'static str = "Orchestrator disconnected from explorer";
+const ERROR_ORCH_DISCONNECTED: &str = "Orchestrator disconnected from explorer";
 
 /// Shared behaviour for every explorer type.
 ///
@@ -24,8 +26,7 @@ const ERROR_ORCH_DISCONNECTED: &'static str = "Orchestrator disconnected from ex
 /// (resource inventory). The trait then supplies the default run-loop
 /// (`run`) and startup gate (`wait_for_start`) that drive the explorer.
 pub trait Explorer {
-
-    fn get_base (&self) -> RwLockReadGuard<ExplorerBase>;
+    fn get_base(&self) -> RwLockReadGuard<ExplorerBase>;
     fn get_base_mut(&self) -> RwLockWriteGuard<ExplorerBase>;
 
     fn get_dummy_bag_mut(&self) -> RwLockWriteGuard<DummyBag>;
@@ -35,30 +36,19 @@ pub trait Explorer {
     /// explorer's message loop until it is killed or the orchestrator
     /// disconnects. `container` supplies the AI-specific callbacks invoked
     /// by each [`ExplorerBase`] handler (e.g. `kill_handler`).
-    fn run(&self, container: Arc<dyn AIHandlers> ) -> Result<(), String> {
+    fn run(&self, container: Arc<dyn AIHandlers>) -> Result<(), String> {
         let kill = self.wait_for_start()?;
         if kill {
             return Ok(());
         }
 
-        // self.start_ai();
-        println!("Running explorer");
-        // self.ask_supported_resources();
-        // println!("Planet #{} basic resources: {:?}", self.current_planet_id.read().unwrap(), self.basic_resources);
-        // self.set_neighbours();
-        // self.handle_user_input();
-
         loop {
-            println!("Explorer {} entered main loop", self.get_base().explorer_id);
             if !*self.get_base().alive.read().unwrap() {
-                println!("Explorer {} detected death, exiting...", self.get_base().explorer_id);
                 return Ok(());
             }
 
             match self.get_base().from_orchestrator.recv() {
-                Ok(OrchestratorToExplorer::StartExplorerAI) => {
-                    // self.start_ai();
-                }
+                Ok(OrchestratorToExplorer::StartExplorerAI) => {}
                 Ok(OrchestratorToExplorer::ResetExplorerAI) => {
                     self.get_base().reset_ai(|| container.reset_ai_handler());
                 }
@@ -68,11 +58,13 @@ pub trait Explorer {
                 }
 
                 Ok(OrchestratorToExplorer::MoveToPlanet {
-                       sender_to_new_planet,
-                       planet_id,
-                   }) => {
-                    println!("Received move to planet msg");
-                    self.get_base().move_to_planet(sender_to_new_planet, planet_id, || container.move_to_planet_handler());
+                    sender_to_new_planet,
+                    planet_id,
+                }) => {
+                    self.get_base()
+                        .move_to_planet(sender_to_new_planet, planet_id, || {
+                            container.move_to_planet_handler()
+                        });
                 }
                 Ok(OrchestratorToExplorer::CurrentPlanetRequest) => {
                     self.get_base().get_current_planet();
@@ -84,31 +76,25 @@ pub trait Explorer {
                     self.get_base().ask_combinations();
                 }
                 Ok(OrchestratorToExplorer::GenerateResourceRequest { to_generate }) => {
-                    self.get_base().generate_resource(to_generate, |arg: &Option<&BasicResource> | container.generate_resource_handler(arg));
+                    let _res = self
+                        .get_base()
+                        .generate_resource(to_generate, |arg: &Option<&BasicResource>| {
+                            container.generate_resource_handler(arg)
+                        });
                 }
                 Ok(OrchestratorToExplorer::CombineResourceRequest {
-                       to_generate: _to_generate,
-                   }) => {
-                    // Not implemented yet.
-                    let _request: ComplexResourceRequest;
-                    // match to_generate {
-                    //     ComplexResourceType::Dolphin => { request = ComplexResourceRequest::Dolphin() }
-                    //     ComplexResourceType::AIPartner => { request = ComplexResourceRequest::AIPartner()}
-                    // }
-                    // self.combine_resource(to_generate);
-                }
+                    to_generate: _to_generate,
+                }) => {}
                 Ok(OrchestratorToExplorer::BagContentRequest) => {
                     self.get_base().get_bag();
                 }
                 Ok(OrchestratorToExplorer::NeighborsResponse { neighbors }) => {
-                    println!("Received neighbors response: {:?}", neighbors);
                     self.get_base().set_neighbours(neighbors);
                 }
                 Err(_) => {
                     return Err(ERROR_ORCH_DISCONNECTED.to_string());
                 }
-                // Variant not handled yet: will panic if received.
-                Ok(OrchestratorToExplorer::StopExplorerAI) => todo!(),
+                Ok(OrchestratorToExplorer::StopExplorerAI) => {}
             }
         }
     }
@@ -163,4 +149,4 @@ pub trait Explorer {
 /// Marker trait combining everything a concrete explorer needs to be
 /// usable by the orchestrator: the message loop ([`Explorer`]), the AI
 /// callbacks ([`AIHandlers`]), and thread-safety bounds.
-pub trait ExplorerBehaviour: Explorer + AIHandlers + Send + Sync{}
+pub trait ExplorerBehaviour: Explorer + AIHandlers + Send + Sync {}

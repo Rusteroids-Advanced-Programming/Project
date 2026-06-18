@@ -1,4 +1,4 @@
-use crate::modules::orchestrator::orchestator::Orchestrator;
+use crate::modules::orchestrator::orchestrator::Orchestrator;
 use crate::modules::orchestrator::orchestrator_ai::OrchestratorAI;
 use crate::modules::read_galaxy::build_data_structs::build_galaxy_graph;
 use common_game::components::planet::{Planet, PlanetType};
@@ -20,8 +20,6 @@ impl Initializer for Orchestrator {
     fn initialize(&mut self) {
         self.galaxy_graph = Arc::new(RwLock::new(build_galaxy_graph()));
         let graph_guard = self.galaxy_graph.read().unwrap();
-
-        println!("Galaxy graph {:?}", self.galaxy_graph);
 
         let mut map_guard = self.stats_map.write().unwrap();
 
@@ -93,7 +91,7 @@ impl Initializer for Orchestrator {
                         ],
                         vec![],
                     ),
-                    _ => (vec![],vec![]),
+                    _ => (vec![], vec![]),
                 }
             }
             let planet_id = &tmp.value;
@@ -124,7 +122,8 @@ impl Initializer for Orchestrator {
                 }
 
                 6 => {
-                    planet_wrapper = rusty_crab_ap2025::planet::create_planet(rx1, tx2, ex2, *planet_id);
+                    planet_wrapper =
+                        rusty_crab_ap2025::planet::create_planet(rx1, tx2, ex2, *planet_id);
                     planet_name = "Rusty-Crab".to_string()
                 }
 
@@ -134,14 +133,24 @@ impl Initializer for Orchestrator {
                 }
 
                 8 => {
-                    planet_wrapper =
-                        rustrelli::create_planet(*planet_id, rx1, tx2, ex2, ExplorerRequestLimit::None);
+                    planet_wrapper = rustrelli::create_planet(
+                        *planet_id,
+                        rx1,
+                        tx2,
+                        ex2,
+                        ExplorerRequestLimit::None,
+                    );
                     planet_name = "Rustrelli".to_string()
                 }
 
                 _ => {
-                    planet_wrapper =
-                        rustrelli::create_planet(*planet_id, rx1, tx2, ex2, ExplorerRequestLimit::None);
+                    planet_wrapper = rustrelli::create_planet(
+                        *planet_id,
+                        rx1,
+                        tx2,
+                        ex2,
+                        ExplorerRequestLimit::None,
+                    );
                     planet_name = "Rustrelli".to_string()
                 }
             }
@@ -173,8 +182,6 @@ impl Initializer for Orchestrator {
             map_guard.add_planet(tmp.value, planet_name, planet_type);
 
             self.start_planet_ai(tmp.value);
-
-            println!("planet threads {:?}", self.planet_threads);
         }
     }
 }

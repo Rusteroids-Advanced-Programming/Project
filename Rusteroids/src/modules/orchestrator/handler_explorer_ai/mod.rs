@@ -1,4 +1,4 @@
-use crate::modules::orchestrator::orchestator::Orchestrator;
+use crate::modules::orchestrator::orchestrator::Orchestrator;
 use combine_resources::combine_resources_impl;
 use common_game::components::resource::{BasicResourceType, ComplexResourceType};
 use common_game::utils::ID;

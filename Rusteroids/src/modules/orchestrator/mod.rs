@@ -2,13 +2,14 @@ pub(crate) mod event_manager;
 pub(crate) mod explorer_initializer;
 pub(crate) mod handler_explorer_ai;
 pub mod initializer;
-pub mod orchestator;
+pub mod orchestrator;
 pub(crate) mod orchestrator_ai;
 
+#[allow(unused)]
 mod tests {
     use crate::modules::orchestrator::explorer_initializer::ExplorerInitializer;
     use crate::modules::orchestrator::initializer::Initializer;
-    use crate::modules::orchestrator::orchestator::Orchestrator;
+    use crate::modules::orchestrator::orchestrator::Orchestrator;
     use crate::modules::orchestrator::orchestrator_ai::OrchestratorAI;
     use std::sync::{Arc, RwLock};
     use std::thread;
@@ -33,7 +34,10 @@ mod tests {
         let guard = orch.stats_map.read().unwrap();
         let stats = guard.get(&8).unwrap();
 
-        assert_eq!("DummyPlanetState { energy_cells: [true, true, false, false, false], charged_cells_count: 2, has_rocket: false }", format!("{:?}", state));
+        assert_eq!(
+            "DummyPlanetState { energy_cells: [true, true, false, false, false], charged_cells_count: 2, has_rocket: false }",
+            format!("{:?}", state)
+        );
         assert_eq!(false, stats.alive);
         assert_eq!(2, stats.sunray_count);
         assert_eq!(1, stats.asteroid_count as i32);
@@ -41,9 +45,7 @@ mod tests {
 
     #[test]
     fn simulate_explorer() {
-        let _ = env_logger::builder()
-            .is_test(true) // Assicura che l'output sia catturato correttamente da cargo test
-            .try_init();
+        let _ = env_logger::builder().is_test(true).try_init();
 
         let diff = 0;
         let orch = Orchestrator::new(diff);
@@ -51,11 +53,10 @@ mod tests {
         arc_orch.write().unwrap().initialize();
         let vec_explorers = vec![1];
 
-
         let orc_clone1 = arc_orch.clone();
         let orc_clone2 = arc_orch.clone();
 
-        let _handle = thread::spawn( move|| {
+        let _handle = thread::spawn(move || {
             orc_clone1.read().unwrap().run();
         });
 

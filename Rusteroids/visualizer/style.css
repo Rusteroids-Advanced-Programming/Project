@@ -3,7 +3,7 @@
 /* STILE */
 * {
     font-family: 'Press Start 2P', cursive;
-    image-rendering: pixelated; /* Ereditato da tutti */
+    image-rendering: pixelated;
     box-sizing: border-box;
 }
 
@@ -55,7 +55,7 @@ body {
 
 .planet-sprite.dead { filter: grayscale(1) brightness(0.5); }
 
-/* INTERFACCIA */
+/* INTERFACE */
 .details-box,
 .explorer-card,
 #log-container {
@@ -67,7 +67,7 @@ body {
     box-shadow: 5px 5px 0px rgba(0, 0, 0, 0.8);
 }
 
-/* DETTAGLI PIANETA */
+/* PLANET DETAILS */
 .details-box {
     position: fixed;
     top: 20px;
@@ -137,7 +137,7 @@ body {
     color: #2ecc71;
 }
 
-/* SCHEDA EXPLORER */
+/* EXPLORER CARD */
 #explorers-status-container {
     position: fixed;
     top: 20px;
@@ -181,7 +181,7 @@ body {
     font-size: 0.9em;
 }
 
-/* ALTRO */
+/* MISC */
 .hidden { display: none !important; }
 
 .close-btn {
@@ -335,8 +335,8 @@ body {
 
 
 .logs-table th:nth-child(1), .logs-table td:nth-child(1) { width: 10%; } /* Timestamp */
-.logs-table th:nth-child(2), .logs-table td:nth-child(2) { width: 10%; } /* Canale */
-.logs-table th:nth-child(3), .logs-table td:nth-child(3) { width: 22%; } /* Evento */
+.logs-table th:nth-child(2), .logs-table td:nth-child(2) { width: 10%; } /* Channel */
+.logs-table th:nth-child(3), .logs-table td:nth-child(3) { width: 22%; } /* Event */
 .logs-table th:nth-child(4), .logs-table td:nth-child(4) { width: 13%; } /* Sender */
 .logs-table th:nth-child(5), .logs-table td:nth-child(5) { width: 13%; } /* Receiver */
 .logs-table th:nth-child(6), .logs-table td:nth-child(6) {

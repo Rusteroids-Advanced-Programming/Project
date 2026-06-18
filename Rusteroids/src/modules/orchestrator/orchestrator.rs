@@ -1,23 +1,23 @@
 use crate::modules::explorer_utils::bag_type::DummyBag;
-use crate::modules::explorers::manual_explorer::manual_explorer::ManualExplorer;
+use crate::modules::explorer_utils::explorer::ExplorerBehaviour;
 use crate::modules::orchestrator::event_manager::ManageEvents;
 use crate::modules::read_galaxy::graph::Graph;
 use crate::modules::read_galaxy::stats::StatsMap;
 use common_game::components::forge::Forge;
+use common_game::logging::LogEvent;
 use common_game::protocols::orchestrator_explorer::{
     ExplorerToOrchestrator, OrchestratorToExplorer,
 };
 use common_game::protocols::orchestrator_planet::{OrchestratorToPlanet, PlanetToOrchestrator};
 use common_game::protocols::planet_explorer::{ExplorerToPlanet, PlanetToExplorer};
 use common_game::utils::ID;
-use common_game::logging::{LogEvent,Participant,ActorType,Channel,Payload};
 use crossbeam_channel::{Receiver, Sender};
 use std::collections::HashMap;
 use std::collections::VecDeque;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::{JoinHandle, sleep};
 use std::time::Duration;
-use crate::modules::explorer_utils::explorer::ExplorerBehaviour;
 
 /// Defines game-wide event occurrence intervals and probability metrics.
 pub enum Difficulty {
@@ -33,7 +33,7 @@ impl Difficulty {
         match self {
             Difficulty::Easy => 0.05,
             Difficulty::Medium => 0.1,
-            Difficulty::Hard => 0.9,
+            Difficulty::Hard => 0.3,
             Difficulty::Peaceful => 0.0,
         }
     }
@@ -75,6 +75,7 @@ pub struct Orchestrator {
     pub planet_resources: HashMap<ID, (Vec<String>, Vec<String>)>,
     pub logs: RwLock<VecDeque<String>>,
     pub structured_logs: Arc<RwLock<Vec<LogEvent>>>,
+    pub is_running: AtomicBool,
 }
 
 impl Orchestrator {
@@ -101,6 +102,7 @@ impl Orchestrator {
             planet_resources: HashMap::new(),
             logs: RwLock::new(VecDeque::with_capacity(100)),
             structured_logs: Arc::new(RwLock::new(Vec::new())),
+            is_running: AtomicBool::new(false),
         }
     }
 
@@ -166,10 +168,17 @@ impl Orchestrator {
             .unwrap_or_default()
     }
 
+    pub fn stop(&self) {
+        self.is_running.store(false, Ordering::SeqCst);
+    }
+
     /// Launches the main orchestrator tick loop, evaluating background hazards until all planet targets collapse.
     pub fn run(&self) {
-        loop {
+        self.is_running.store(true, Ordering::SeqCst);
+
+        while self.is_running.load(Ordering::SeqCst) {
             if !self.manage() {
+                self.is_running.store(false, Ordering::SeqCst);
                 break;
             }
             sleep(Duration::from_millis(500));

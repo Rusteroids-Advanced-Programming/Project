@@ -1,4 +1,4 @@
-use crate::modules::orchestrator::orchestator::Orchestrator;
+use crate::modules::orchestrator::orchestrator::Orchestrator;
 use common_game::components::resource::BasicResourceType;
 use common_game::protocols::orchestrator_explorer::{
     ExplorerToOrchestrator, OrchestratorToExplorer,
@@ -11,7 +11,6 @@ use common_game::utils::ID;
 /// response channel are silently ignored.
 pub fn generate_resource_impl(orch: &Orchestrator, expl_id: ID, to_generate: BasicResourceType) {
     let (tx1, rx1, _, _) = orch.explorer_channels.get(&expl_id).unwrap();
-    println!("tx1 {:?}", tx1);
     tx1.send(OrchestratorToExplorer::GenerateResourceRequest { to_generate })
         .unwrap();
     let msg = rx1.recv().unwrap();
@@ -20,12 +19,8 @@ pub fn generate_resource_impl(orch: &Orchestrator, expl_id: ID, to_generate: Bas
             explorer_id: _explorer_id,
             generated,
         } => match generated {
-            Ok(generated) => {
-                println!(" explorer generated {:?}", generated);
-            }
-            Err(_err) => {
-                println!(" explorer could not generate {:?}", to_generate);
-            }
+            Ok(_generated) => {}
+            Err(_err) => {}
         },
 
         _ => {}

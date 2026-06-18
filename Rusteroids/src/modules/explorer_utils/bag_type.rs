@@ -1,4 +1,3 @@
-use std::any::Any;
 use common_game::components::resource::{
     BasicResource, BasicResourceType, ComplexResource, ComplexResourceType, GenericResource,
     ResourceType,
@@ -46,12 +45,8 @@ impl DummyBag {
 
     pub fn get_resource_quantity(&self, resource: &ResourceType) -> usize {
         match resource {
-            ResourceType::Basic(basic_type) => {
-                self.get_basic_quantity(basic_type)
-            },
-            ResourceType::Complex(complex_type) => {
-                self.get_complex_quantity(complex_type)
-            }
+            ResourceType::Basic(basic_type) => self.get_basic_quantity(basic_type),
+            ResourceType::Complex(complex_type) => self.get_complex_quantity(complex_type),
         }
     }
 
@@ -59,9 +54,7 @@ impl DummyBag {
         let tmp = self.basic.get(basic_resource_type);
         match tmp {
             None => false,
-            Some(qty) => {
-                qty >= &1
-            }
+            Some(qty) => qty >= &1,
         }
     }
 
@@ -69,9 +62,7 @@ impl DummyBag {
         let tmp = self.complex.get(complex_resource_type);
         match tmp {
             None => false,
-            Some(qty) => {
-                qty >= &1
-            }
+            Some(qty) => qty >= &1,
         }
     }
 
@@ -81,33 +72,23 @@ impl DummyBag {
 
         if resource_type.is_carbon() {
             check = self.is_basic_in_bag(&BasicResourceType::Carbon);
-        }
-        else if resource_type.is_hydrogen() {
+        } else if resource_type.is_hydrogen() {
             check = self.is_basic_in_bag(&BasicResourceType::Hydrogen);
-        }
-        else if resource_type.is_silicon() {
+        } else if resource_type.is_silicon() {
             check = self.is_basic_in_bag(&BasicResourceType::Silicon);
-        }
-        else if resource_type.is_oxygen() {
+        } else if resource_type.is_oxygen() {
             check = self.is_basic_in_bag(&BasicResourceType::Oxygen);
-        }
-
-        else if resource_type.is_diamond() {
+        } else if resource_type.is_diamond() {
             check = self.is_complex_in_bag(&ComplexResourceType::Diamond);
-        }
-        else if resource_type.is_dolphin() {
+        } else if resource_type.is_dolphin() {
             check = self.is_complex_in_bag(&ComplexResourceType::Dolphin);
-        }
-        else if resource_type.is_aipartner() {
+        } else if resource_type.is_aipartner() {
             check = self.is_complex_in_bag(&ComplexResourceType::AIPartner);
-        }
-        else if resource_type.is_robot() {
+        } else if resource_type.is_robot() {
             check = self.is_complex_in_bag(&ComplexResourceType::Robot);
-        }
-        else if resource_type.is_water() {
+        } else if resource_type.is_water() {
             check = self.is_complex_in_bag(&ComplexResourceType::Water);
-        }
-        else if resource_type.is_life() {
+        } else if resource_type.is_life() {
             check = self.is_complex_in_bag(&ComplexResourceType::Life);
         }
 

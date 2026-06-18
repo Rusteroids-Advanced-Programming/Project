@@ -1,8 +1,8 @@
-use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, RwLock};
-use common_game::utils::ID;
 use crate::modules::explorer_utils::planet_infos::PlanetInfos;
 use crate::modules::read_galaxy::graph::{Graph, Node};
+use common_game::utils::ID;
+use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, RwLock};
 
 /// The explorer's local knowledge of the galaxy: per-planet info, the discovered graph topology,
 /// and the set of edges already traversed.
@@ -14,7 +14,6 @@ pub struct ExplorerMap {
 }
 
 impl ExplorerMap {
-
     /// Creates an empty map with no known planets, an empty graph and no visited edges.
     pub fn new() -> ExplorerMap {
         Self {
@@ -63,7 +62,6 @@ impl ExplorerMap {
 
         let current_node: Arc<RwLock<Node<ID>>>;
 
-        // Reuse the existing node if present, otherwise create it
         if !self.graph.is_node_in_graph(&planet_id) {
             current_node = self.graph.add_node(planet_id);
         } else {
@@ -73,7 +71,6 @@ impl ExplorerMap {
         for neighbour in neighbours {
             let neighbour_node: Arc<RwLock<Node<ID>>>;
 
-            // Same get-or-create logic for each neighbour
             if !self.graph.is_node_in_graph(&neighbour) {
                 neighbour_node = self.graph.add_node(neighbour);
             } else {
@@ -81,7 +78,10 @@ impl ExplorerMap {
             }
 
             // Avoid inserting duplicate graph connections.
-            if !self.graph.is_adjacent_node(current_node.clone(), &neighbour) {
+            if !self
+                .graph
+                .is_adjacent_node(current_node.clone(), &neighbour)
+            {
                 self.graph.add_adj_node(&current_node, neighbour_node);
             }
         }
@@ -91,8 +91,7 @@ impl ExplorerMap {
     /// creating any neighbour nodes that don't yet exist.
     pub fn update_neighbors(&mut self, planet_id: &ID, neighbors: &Vec<ID>) {
         // The planet is expected to already exist in the graph
-        let current_node = self.graph.get_node(planet_id)
-            .expect("Node not found");
+        let current_node = self.graph.get_node(planet_id).expect("Node not found");
 
         let mut new_adj = Vec::new();
 

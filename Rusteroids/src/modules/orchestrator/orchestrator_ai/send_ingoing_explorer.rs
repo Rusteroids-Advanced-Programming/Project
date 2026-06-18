@@ -1,5 +1,6 @@
-use crate::modules::orchestrator::orchestator::Orchestrator;
+use crate::modules::orchestrator::orchestrator::Orchestrator;
 use crate::modules::orchestrator::orchestrator_ai::OrchestratorAI;
+use common_game::logging::{ActorType, Channel, EventType, LogEvent, Participant, Payload};
 use common_game::protocols::orchestrator_explorer::{
     ExplorerToOrchestrator, OrchestratorToExplorer,
 };
@@ -16,7 +17,7 @@ pub fn send_ingoing_explorer_impl(orch: &Orchestrator, planet_id: ID, explorer_i
     let expl = orch.explorers.get(&explorer_id).unwrap();
 
     // Sanity check to abort immediately if the explorer instance has been terminated
-    if ! *expl.get_base().alive.read().unwrap() {
+    if !*expl.get_base().alive.read().unwrap() {
         return false;
     }
 
@@ -49,7 +50,7 @@ pub fn send_ingoing_explorer_impl(orch: &Orchestrator, planet_id: ID, explorer_i
                             sender_to_new_planet: Some(expl_to_planet.clone()),
                             planet_id,
                         })
-                            .unwrap();
+                        .unwrap();
 
                         // Wait with a safety timeout for the explorer thread to acknowledge the movement transition
                         let expl_resp = rx2.recv_timeout(Duration::from_millis(2000)).unwrap();
@@ -61,7 +62,6 @@ pub fn send_ingoing_explorer_impl(orch: &Orchestrator, planet_id: ID, explorer_i
                                 let mut pos_guard = orch.explorer_planet.write().unwrap();
                                 pos_guard.insert(explorer_id, planet_id);
 
-                                println!("Mappa aggiornata. Stato attuale: {:?}", pos_guard);
                                 drop(pos_guard);
 
                                 // Update local architectural states inside the global tracker map and the explorer structure
@@ -116,16 +116,36 @@ pub fn send_ingoing_explorer_impl(orch: &Orchestrator, planet_id: ID, explorer_i
                     }
                 }
                 Err(e) => {
-                    println!("Error while trying to move explorer: {:?}", e);
+                    let mut payload = Payload::new();
+                    payload.insert("Error while moving explorer".into(), format!("{:?}", e));
+
+                    orch.add_structured_log(LogEvent::new(
+                        Some(Participant::new(ActorType::Orchestrator, 0u32)),
+                        None,
+                        EventType::InternalOrchestratorAction,
+                        Channel::Error,
+                        payload,
+                    ));
+
                     false
                 }
             }
         }
         msg => {
-            println!(
-                "Received unexpected msg while waiting incoming explorer response: {:?}",
-                msg
+            let mut payload = Payload::new();
+            payload.insert(
+                "Received unexpected msg while waiting incoming explorer response".into(),
+                format!("{:?}", msg),
             );
+
+            orch.add_structured_log(LogEvent::new(
+                Some(Participant::new(ActorType::Orchestrator, 0u32)),
+                None,
+                EventType::InternalOrchestratorAction,
+                Channel::Error,
+                payload,
+            ));
+
             false
         }
     }

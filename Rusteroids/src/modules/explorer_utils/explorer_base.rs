@@ -2,14 +2,16 @@
 //! every explorer implementation is built on top of (see the [`Explorer`]
 //! and [`ExplorerAI`] traits, which operate on this struct).
 
-use std::collections::HashSet;
-use std::sync::RwLock;
+use crate::modules::explorer_utils::bag_type::{BagType, DummyBag};
 use common_game::components::resource::{BasicResourceType, ComplexResourceType};
-use common_game::protocols::orchestrator_explorer::{ExplorerToOrchestrator, OrchestratorToExplorer};
+use common_game::protocols::orchestrator_explorer::{
+    ExplorerToOrchestrator, OrchestratorToExplorer,
+};
 use common_game::protocols::planet_explorer::{ExplorerToPlanet, PlanetToExplorer};
 use common_game::utils::ID;
 use crossbeam_channel::{Receiver, Sender};
-use crate::modules::explorer_utils::bag_type::{BagType, DummyBag};
+use std::collections::HashSet;
+use std::sync::RwLock;
 
 /// Holds an explorer's identity, resource bag, current planet/connection
 /// state, and the channels used to talk to the orchestrator and to
@@ -18,7 +20,6 @@ use crate::modules::explorer_utils::bag_type::{BagType, DummyBag};
 pub struct ExplorerBase {
     pub explorer_id: ID,
     pub bag: RwLock<BagType>,
-    // pub dummy_bag: RwLock<DummyBag>, // aggiunto per visualizer
     pub current_planet_id: RwLock<ID>,
     pub stopped: RwLock<bool>,
     pub alive: RwLock<bool>,
@@ -29,7 +30,6 @@ pub struct ExplorerBase {
     pub neighbours: RwLock<Vec<ID>>,
     pub basic_resources: RwLock<HashSet<BasicResourceType>>,
     pub combinations: RwLock<HashSet<ComplexResourceType>>,
-
 }
 
 impl ExplorerBase {
@@ -46,7 +46,6 @@ impl ExplorerBase {
         neighbours: RwLock<Vec<ID>>,
         basic_resources: RwLock<HashSet<BasicResourceType>>,
         combinations: RwLock<HashSet<ComplexResourceType>>,
-
     ) -> Self {
         ExplorerBase {
             explorer_id,

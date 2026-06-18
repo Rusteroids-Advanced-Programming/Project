@@ -1,8 +1,10 @@
 use crate::modules::explorer_utils::bag_type::DummyBag;
-use crate::modules::explorers::manual_explorer::manual_explorer::ManualExplorer;
+use crate::modules::explorer_utils::explorer::ExplorerBehaviour;
+use crate::modules::explorers::explorer_1::explorer_1::Explorer1;
+use crate::modules::explorers::explorer_2::explorer_2::Explorer2;
 use crate::modules::orchestrator::event_manager::ExplorerListener;
 use crate::modules::orchestrator::handler_explorer_ai::HandlerExplorer;
-use crate::modules::orchestrator::orchestator::Orchestrator;
+use crate::modules::orchestrator::orchestrator::Orchestrator;
 use common_game::protocols::orchestrator_explorer::{
     ExplorerToOrchestrator, OrchestratorToExplorer,
 };
@@ -14,19 +16,11 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
-use crate::modules::explorer_utils::explorer::{Explorer, ExplorerBehaviour};
-use crate::modules::explorer_utils::handlers::AIHandlers;
-use crate::modules::explorers::explorer_1::explorer_1::Explorer1;
-use crate::modules::explorers::explorer_2::explorer_2::Explorer2;
 
 #[allow(dead_code)]
 /// Trait defining setup protocols to spin up and bind asynchronous explorer nodes within the system grid.
 pub trait ExplorerInitializer {
-    fn initialize_explorers(
-        &mut self,
-        explorers: Vec<u32>,
-        orch_clone: Arc<RwLock<Orchestrator>>,
-    );
+    fn initialize_explorers(&mut self, explorers: Vec<u32>, orch_clone: Arc<RwLock<Orchestrator>>);
 
     fn check_explorer_number(&self, explorers_num: usize) -> Result<(), String>;
 
@@ -42,7 +36,7 @@ impl ExplorerInitializer for Orchestrator {
     ) {
         self.check_explorer_number(explorers.len()).unwrap();
 
-        for (expl_id) in explorers {
+        for expl_id in explorers {
             // Allocate bidirectional message streams connecting Orchestrator and individual Explorer threads
             let (tx1, rx1): (
                 Sender<OrchestratorToExplorer>,
@@ -60,18 +54,40 @@ impl ExplorerInitializer for Orchestrator {
             let normalized_id = expl_id;
 
             // Polymorphic match to instantiate the exact required explorer behavioral implementation strategy
-            let mut explorer: Arc<dyn ExplorerBehaviour>;
+            let explorer: Arc<dyn ExplorerBehaviour>;
             match normalized_id {
-                1 => { explorer = Arc::new(ManualExplorer::new(expl_id, spawn_planet, rx1, tx2)); }
-                2 => { explorer = Arc::new(Explorer1::new(expl_id, spawn_planet, rx1, tx2)); }
-                3 => { explorer = Arc::new(Explorer2::new(expl_id, spawn_planet, rx1, tx2)); }
-                _ => { explorer = Arc::new(Explorer2::new(expl_id, spawn_planet, rx1, tx2)); }
+                //1 => { explorer = Arc::new(ManualExplorer::new(expl_id, spawn_planet, rx1, tx2)); }
+                1 => {
+                    explorer = Arc::new(Explorer1::new(
+                        expl_id,
+                        spawn_planet,
+                        rx1,
+                        tx2,
+                        self.stats_map.read().unwrap().len(),
+                    ));
+                }
+                2 => {
+                    explorer = Arc::new(Explorer2::new(
+                        expl_id,
+                        spawn_planet,
+                        rx1,
+                        tx2,
+                        self.stats_map.read().unwrap().len(),
+                    ));
+                }
+                _ => {
+                    explorer = Arc::new(Explorer2::new(
+                        expl_id,
+                        spawn_planet,
+                        rx1,
+                        tx2,
+                        self.stats_map.read().unwrap().len(),
+                    ));
+                }
             }
 
             self.explorer_channels
                 .insert(expl_id, (tx1, rx2, tx_planet_expl, rx_planet_expl));
-
-            println!("Spawn planet: {}", spawn_planet);
 
             // Connect and bind the initial planet communication handle inside the explorer's base struct
             let mut base_guard = explorer.get_base_mut();
@@ -109,7 +125,7 @@ impl ExplorerInitializer for Orchestrator {
             ));
             let graph = self.galaxy_graph.clone();
 
-            // Setup a distinct asynchronous event listener instance to monitor inbound requests from this explorer
+            // Set up a distinct asynchronous event listener instance to monitor inbound requests from this explorer
             let expl_listener = Arc::new(ExplorerListener::new(
                 expl_channels,
                 planet_channels,

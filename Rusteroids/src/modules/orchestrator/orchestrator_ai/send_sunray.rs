@@ -1,6 +1,6 @@
-use crate::modules::orchestrator::orchestator::Orchestrator;
-use crate::modules::orchestrator::orchestrator_ai::OrchestratorAI;
+use crate::modules::orchestrator::orchestrator::Orchestrator;
 use crate::modules::read_galaxy::stats::Counts;
+use common_game::logging::{ActorType, Channel, EventType, LogEvent, Participant, Payload};
 use common_game::protocols::orchestrator_planet::{OrchestratorToPlanet, PlanetToOrchestrator};
 use common_game::utils::ID;
 
@@ -26,10 +26,19 @@ pub fn send_sunray_impl(orch: &Orchestrator, target: ID) -> Option<ID> {
         }
 
         msg => {
-            println!(
-                "Unexpected message received: {:?} while waiting for sunray ack",
-                msg
+            let mut payload = Payload::new();
+            payload.insert(
+                "Received unexpected msg while waiting for sunray ack".into(),
+                format!("{:?}", msg),
             );
+
+            orch.add_structured_log(LogEvent::new(
+                Some(Participant::new(ActorType::Orchestrator, 0u32)),
+                Some(Participant::new(ActorType::Planet, target)),
+                EventType::InternalOrchestratorAction,
+                Channel::Error,
+                payload,
+            ));
         }
     }
     res_id

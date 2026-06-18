@@ -1,4 +1,4 @@
-use crate::modules::orchestrator::orchestator::Orchestrator;
+use crate::modules::orchestrator::orchestrator::Orchestrator;
 use common_game::components::resource::ComplexResourceType;
 use common_game::protocols::orchestrator_explorer::{
     ExplorerToOrchestrator, OrchestratorToExplorer,
@@ -19,12 +19,8 @@ pub fn combine_resources_impl(orch: &Orchestrator, expl_id: ID, to_generate: Com
             explorer_id: _explorer_id,
             generated,
         } => match generated {
-            Ok(generated) => {
-                println!(" explorer generated {:?}", generated);
-            }
-            Err(_err) => {
-                println!(" explorer could not combine");
-            }
+            Ok(_generated) => {}
+            Err(_err) => {}
         },
         _ => {}
     }

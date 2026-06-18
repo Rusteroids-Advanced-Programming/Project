@@ -48,7 +48,11 @@ impl<T: PartialEq> Graph<T> {
     /// Completely removes a target node from the graph allocation space, scrubbing its instances from all adjacency lists.
     pub fn remove_node(&mut self, value: T) {
         // 1. Remove the node itself from the graph's main node list
-        if let Some(index) = self.nodes.iter().position(|node| node.read().unwrap().value == value) {
+        if let Some(index) = self
+            .nodes
+            .iter()
+            .position(|node| node.read().unwrap().value == value)
+        {
             self.nodes.remove(index);
         }
 
@@ -56,16 +60,16 @@ impl<T: PartialEq> Graph<T> {
         for node in &self.nodes {
             let mut guard = node.write().unwrap();
             // Retain only neighbor pointers whose underlying internal value does not match the removed payload
-            guard.adjacent_nodes.retain(|adj_node| {
-                adj_node.read().unwrap().value != value
-            });
+            guard
+                .adjacent_nodes
+                .retain(|adj_node| adj_node.read().unwrap().value != value);
         }
     }
 
     pub fn is_node_in_graph(&self, value: &T) -> bool {
         for node in &self.nodes {
             if &node.read().unwrap().value == value {
-                return true
+                return true;
             }
         }
         false
@@ -133,6 +137,9 @@ mod test_graph {
 
         graph.add_adj_node(&a, c);
         graph.remove_node("B");
-        assert_eq!("Graph {\n  A -> [C]\n  C -> []\n}\n", format!("{:?}", graph));
+        assert_eq!(
+            "Graph {\n  A -> [C]\n  C -> []\n}\n",
+            format!("{:?}", graph)
+        );
     }
 }

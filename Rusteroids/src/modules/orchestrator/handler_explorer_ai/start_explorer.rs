@@ -1,9 +1,11 @@
-use crate::modules::orchestrator::orchestator::Orchestrator;
+use crate::modules::orchestrator::orchestrator::Orchestrator;
+use common_game::logging::{ActorType, Channel, EventType, LogEvent, Participant, Payload};
 use common_game::protocols::orchestrator_explorer::{
     ExplorerToOrchestrator, OrchestratorToExplorer,
 };
 use common_game::utils::ID;
 
+#[allow(unused)]
 /// Sends a start signal to the explorer's AI and prints a confirmation once it acknowledges.
 /// Sends the request over the explorer's channel, then blocks waiting for the matching response.
 pub fn start_explorer_impl(orch: &Orchestrator, expl_id: ID) {
@@ -13,14 +15,21 @@ pub fn start_explorer_impl(orch: &Orchestrator, expl_id: ID) {
     // Block until the explorer acknowledges the start
     let msg = rx1.recv().unwrap();
     match msg {
-        ExplorerToOrchestrator::StartExplorerAIResult { explorer_id } => {
-            println!("Start explorer AI {}", explorer_id);
-        }
+        ExplorerToOrchestrator::StartExplorerAIResult { explorer_id } => {}
         msg => {
-            println!(
-                "Unexpected message while waiting for start explorer AI: {:?}",
-                msg
+            let mut payload = Payload::new();
+            payload.insert(
+                "Received unexpected msg while starting explorer AI".into(),
+                format!("{:?}", msg),
             );
+
+            orch.add_structured_log(LogEvent::new(
+                Some(Participant::new(ActorType::Orchestrator, 0u32)),
+                Some(Participant::new(ActorType::Explorer, expl_id)),
+                EventType::InternalOrchestratorAction,
+                Channel::Error,
+                payload,
+            ));
         }
     }
 }

@@ -1,14 +1,14 @@
+use rand::Rng;
+use rand::seq::SliceRandom;
 use std::collections::BTreeSet;
 use std::fs::File;
-use std::io::{Write, BufWriter};
-use rand::seq::SliceRandom;
-use rand::Rng;
+use std::io::{BufWriter, Write};
 
 /// Procedurally generates a topological galaxy graph file ensuring a backbone ring layout augmented with random chord links.
 pub fn generate_galaxy_file(num_planets: usize) -> std::io::Result<()> {
     // Structural sanity check to ensure the topological algorithm has enough nodes to build the network ring
-    if num_planets < 6 {
-        panic!("Almeno 7 pianeti");
+    if num_planets < 7 {
+        panic!("At least 7 planets");
     }
 
     let output_filename = "galaxy-initialization.txt";
@@ -31,7 +31,7 @@ pub fn generate_galaxy_file(num_planets: usize) -> std::io::Result<()> {
 
     // Chordal Pass: Inject random shortcuts to convert the simple ring into a more complex small-world topological graph
     for i in 1..=num_planets {
-        let quanti_random = rng.random_range(min_rand_neighbors..=max_rand_neighbors);
+        let neighbors_num = rng.random_range(min_rand_neighbors..=max_rand_neighbors);
 
         // Filter candidates to exclude self-loops and nodes that are already linked as immediate backbone neighbors
         let mut potential_candidates: Vec<usize> = (1..=num_planets)
@@ -40,9 +40,9 @@ pub fn generate_galaxy_file(num_planets: usize) -> std::io::Result<()> {
 
         potential_candidates.shuffle(&mut rng);
 
-        let quanti_da_prendere = quanti_random.min(potential_candidates.len());
+        let neighbors_chosen = neighbors_num.min(potential_candidates.len());
 
-        for v in potential_candidates.into_iter().take(quanti_da_prendere) {
+        for v in potential_candidates.into_iter().take(neighbors_chosen) {
             galaxy[i].insert(v);
         }
     }
@@ -52,18 +52,13 @@ pub fn generate_galaxy_file(num_planets: usize) -> std::io::Result<()> {
     let mut writer = BufWriter::new(file);
 
     for i in 1..=num_planets {
-        let neighbors_str: Vec<String> = galaxy[i]
-            .iter()
-            .map(|id| id.to_string())
-            .collect();
+        let neighbors_str: Vec<String> = galaxy[i].iter().map(|id| id.to_string()).collect();
 
         // Write format: "[Planet_ID] [Space-separated list of neighboring Planet_IDs]"
         writeln!(writer, "{} {}", i, neighbors_str.join(" "))?;
     }
 
     writer.flush()?;
-
-    println!("Nuova galassia generata in '{}'", output_filename);
 
     Ok(())
 }

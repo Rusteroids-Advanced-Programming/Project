@@ -1,7 +1,6 @@
 mod modules;
+use crate::modules::orchestrator::orchestrator::Orchestrator;
 use std::sync::{Arc, RwLock};
-use crate::modules::orchestrator::initializer::Initializer;
-use crate::modules::orchestrator::orchestator::Orchestrator;
 
 #[tokio::main]
 async fn main() {

@@ -1,4 +1,4 @@
-use crate::modules::orchestrator::orchestator::Orchestrator;
+use crate::modules::orchestrator::orchestrator::Orchestrator;
 use common_game::protocols::orchestrator_explorer::{
     ExplorerToOrchestrator, OrchestratorToExplorer,
 };
@@ -24,7 +24,7 @@ pub fn move_explorer_impl(orch: &Orchestrator, expl_id: ID, planet_id: ID) {
         sender_to_new_planet: Some(to_planet),
         planet_id,
     })
-        .unwrap();
+    .unwrap();
     // Block until the explorer confirms the move
     let msg = rx1.recv().unwrap();
     match msg {
