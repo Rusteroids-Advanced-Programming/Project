@@ -4,4 +4,24 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-common-game = { path = "../common/app/game" }
+common-game = { git = "https://github.com/unitn-ap-2025/common.git", version = "3.0.0" }
+crossbeam-channel = "0.5.15"
+#rusteroid_planet = { git = "https://github.com/Rusteroids-Advanced-Programming/Planet.git"}
+rust-eze = { git = "https://github.com/Rust-eze-Advanced-Programming/pub-Rust-eze.git",  package = "pub-rust-eze"}
+ciuc = { git = "https://github.com/Pietro-Calvi/ciuc_planet.git", package = "ciuc_planet"}
+trip = { git = "https://github.com/Totally-Reliable-Imaginary-Planets/TRIP.git"}
+crabtorio = { git = "https://github.com/crabtorio/crabtorio.git", package = "planet"}
+rusty-crab-ap2025 = "2.0.0-beta.3"
+enterprise = { git = "https://github.com/Thompspsps/Enterprise_planet.git"}
+rustrelli = { git =  "https://github.com/Rustrelli/rustrelli.git"}
+rand = "0.10.0-rc.7"
+env_logger = "0.11"
+log = "0.4"
+axum = "0.7"
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tower-http = { version = "0.5", features = ["cors", "fs"] } # Aggiungi "fs"
+
+[patch.crates-io]
+common-game = { git = "https://github.com/unitn-ap-2025/common.git" }

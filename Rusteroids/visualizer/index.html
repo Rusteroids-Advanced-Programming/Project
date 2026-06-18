@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Rusteroids</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="main-menu" class="menu-container">
+    <h1 class="menu-title">RUSTEROIDS</h1>
+
+    <div id="menu-initial">
+        <button class="menu-btn" id="btn-start-game">START GAME</button>
+    </div>
+
+    <div id="menu-difficulty" class="hidden">
+        <div style="margin-bottom: 15px; font-family: inherit;">
+            <label for="planets-count" style="color: #00ffcc; display: block; margin-bottom: 5px; font-size: 14px;">
+                NUMBER OF PLANETS (7 - 50):
+            </label>
+            <input
+                    type="number"
+                    id="planets-count"
+                    name="planets_count"
+                    value="30"
+                    min="7"
+                    max="50"
+                    style="background-color: #222; border: 1px solid #00ffcc; color: #fff; padding: 8px; width: 80px; font-family: inherit; text-align: center; border-radius: 4px;"
+                    onchange="if(this.value < 7) this.value = 7; if(this.value > 50) this.value = 50;"
+            />
+        </div>
+        <h2 class="menu-subtitle">CHOOSE DIFFICULTY</h2>
+        <button class="menu-btn btn-diff" data-diff="easy">EASY</button>
+        <button class="menu-btn btn-diff" data-diff="medium">NORMAL</button>
+        <button class="menu-btn btn-diff" data-diff="hard">HARD</button>
+    </div>
+</div>
+
+<div id="game-over-screen" class="menu-container game-over-theme hidden">
+    <h1 class="menu-title">GAME OVER</h1>
+    <p class="menu-subtitle">ALL THE EXPLORERS ARE DEAD</p>
+    <button class="menu-btn" id="btn-restart">BACK TO THE MENU</button>
+</div>
+
+<div id="game-victory-screen" class="hidden" style="text-align: center; margin-top: 50px;">
+    <h1 style="color: #00ffcc; font-size: 48px; text-shadow: 0 0 20px rgba(0,255,204,0.5);">VICTORY!</h1>
+
+    <p id="victory-message" style="color: #e0e0e0; font-size: 18px; margin-bottom: 30px;">
+        Vinto
+    </p>
+
+    <button id="btn-restart-victory" style="background: none; border: 1px solid #00ffcc; color: #00ffcc; padding: 12px 24px; cursor: pointer; font-family: inherit; font-size: 16px; transition: all 0.2s ease;">
+        BACK TO THE MENU
+    </button>
+</div>
+
+<div id="game-interface" class="hidden">
+
+    <div id="planet-details" class="details-box hidden">
+        <button id="close-details" class="close-btn">&times;</button>
+        <h2 id="det-name">-</h2>
+        <p>Status: <span id="det-alive">-</span></p>
+        <p>Type: <span id="det-type">-</span></p>
+        <p>Energy Cells: <span id="det-energy">-</span></p>
+
+        <div class="resource-section">
+            <strong>Extractables:</strong>
+            <div id="det-res-base" class="badge-container"></div>
+        </div>
+
+        <div class="resource-section">
+            <strong>Craftables:</strong>
+            <div id="det-res-complex" class="badge-container"></div>
+        </div>
+        <p><strong>Rocket defense:</strong> <span id="det-rockets-ready">-</span></p>
+        <p>Rockets used: <span id="det-rockets">-</span></p>
+        <p>Neighbors: <span id="det-neighbors">-</span></p>
+    </div>
+
+    <div id="log-container">
+        <div class="log-header"><a href="/logs.html" target="_blank" rel="noopener noreferrer" onmouseover="this.style.color='#00ffcc'" onmouseout="this.style.color='#666'">
+            Logs
+        </a>
+        </div>
+        <div id="log-scroll-area">
+            <div id="log-content"></div>
+        </div>
+    </div>
+
+
+    <div id="explorers-status-container" class="explorers-side-panel"></div>
+
+    <main id="galaxy-container">
+        <canvas id="connections-canvas"></canvas>
+    </main>
+
+</div>
+
+<script src="dist/index.js"></script>
+</body>
+</html>
