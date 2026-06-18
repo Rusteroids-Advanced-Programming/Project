@@ -10,6 +10,7 @@ use common_game::protocols::orchestrator_explorer::{
 use common_game::protocols::orchestrator_planet::{OrchestratorToPlanet, PlanetToOrchestrator};
 use common_game::protocols::planet_explorer::{ExplorerToPlanet, PlanetToExplorer};
 use common_game::utils::ID;
+use common_game::logging::{LogEvent,Participant,ActorType,Channel,Payload};
 use crossbeam_channel::{Receiver, Sender};
 use std::collections::HashMap;
 use std::collections::VecDeque;
@@ -69,6 +70,7 @@ pub struct Orchestrator {
     pub difficulty: Difficulty,
     pub planet_resources: HashMap<ID, (Vec<String>, Vec<String>)>, //aggiunta per Visualizer
     pub logs: RwLock<VecDeque<String>>,
+    pub structured_logs: Arc<RwLock<Vec<LogEvent>>>,
     // self.explorer_channels
 }
 
@@ -94,6 +96,7 @@ impl Orchestrator {
             difficulty: diff,
             planet_resources: HashMap::new(),
             logs: RwLock::new(VecDeque::with_capacity(100)),
+            structured_logs: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
@@ -105,6 +108,13 @@ impl Orchestrator {
         }
         logs.push_back(msg);
     }
+        pub fn add_structured_log(&self, event: LogEvent) {
+            event.emit();
+            if let Ok(mut guard) = self.structured_logs.write() {
+                guard.push(event);
+            }
+        }
+
 
     pub fn get_planet_ids_list(&self) -> Vec<ID> {
         let graph_guard = self.galaxy_graph.read().unwrap();

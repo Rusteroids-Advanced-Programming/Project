@@ -9,6 +9,7 @@ pub async fn start_server(shared_orch: Arc<RwLock<Orchestrator>>) {
     let app = Router::new()
         .route("/galaxy", get(routes::get_galaxy_status))
         .route("/logs", get(routes::get_logs))
+        .route("/api/structured-logs", get(routes::get_structured_logs))
         .route("/start-game", post(routes::start_game))
         .fallback_service(ServeDir::new("visualizer"))
         .layer(CorsLayer::permissive())

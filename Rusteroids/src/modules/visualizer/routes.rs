@@ -2,6 +2,7 @@ use std::sync::{Arc, RwLock};
 use axum::extract::State;
 use axum::Json;
 use axum::http::StatusCode;
+use common_game::logging::Participant;
 use serde::Deserialize;
 use crate::modules::visualizer::dto::GalaxyResponse;
 use crate::modules::orchestrator::orchestator::Orchestrator;
@@ -13,6 +14,20 @@ use crate::modules::read_galaxy::galaxy_generator::generate_galaxy_file;
 pub struct StartGamePayload {
     pub difficulty: String,
 }
+
+#[derive(serde::Serialize)]
+pub struct StructuredLogDTO {
+    pub timestamp: u64,
+    pub sender: String,
+    pub receiver: String,
+    pub event_type: String,
+    pub channel: String,
+    pub message: String,
+}
+
+
+
+
 
 pub async fn start_game(
     State(orch): State<Arc<RwLock<Orchestrator>>>,
@@ -56,6 +71,28 @@ pub async fn start_game(
 pub async fn get_logs(State(orch): State<Arc<RwLock<Orchestrator>>>) -> Json<Vec<String>> {
     let logs = orch.read().unwrap().logs.read().unwrap().clone();
     Json(logs.into_iter().collect())
+}
+
+pub async fn get_structured_logs(State(orch): State<Arc<RwLock<Orchestrator>>>) -> Json<Vec<StructuredLogDTO>> {
+    let guard = orch.read().unwrap();
+    let logs_guard = guard.structured_logs.read().unwrap();
+
+    let dto_list = logs_guard.iter().map(|log| {
+        let fmt_participant = |p: &Option<Participant>| {
+            p.as_ref().map_or_else(|| "None".to_string(), |act| format!("{:?} #{}", act.actor_type, act.id))
+        };
+
+        StructuredLogDTO {
+            timestamp: log.timestamp_unix,
+            sender: fmt_participant(&log.sender),
+            receiver: fmt_participant(&log.receiver),
+            event_type: format!("{:?}", log.event_type),
+            channel: format!("{:?}", log.channel),
+            message: log.payload.get("message").cloned().unwrap_or_else(|| "".to_string()),
+        }
+    }).collect();
+
+    Json(dto_list)
 }
 
 pub async fn get_galaxy_status(State(orch): State<Arc<RwLock<Orchestrator>>>) -> Json<GalaxyResponse> {

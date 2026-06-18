@@ -297,3 +297,75 @@ body {
     color: #ffffff;
     cursor: pointer;
 }
+
+/* LOGS */
+
+.logs-body {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+    margin: 30px;
+}
+
+.logs-title {
+    color: #00ffcc;
+    border-bottom: 2px solid #333;
+    padding-bottom: 15px;
+    margin-top: 10px;
+    margin-bottom: 25px;
+}
+
+.logs-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 14px;
+    line-height: 1.6;
+    table-layout: fixed;
+}
+
+.logs-table th,
+.logs-table td {
+    padding: 14px 24px;
+    text-align: left;
+    border-bottom: 1px solid #2d2d2d;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+.logs-table th:nth-child(1), .logs-table td:nth-child(1) { width: 10%; } /* Timestamp */
+.logs-table th:nth-child(2), .logs-table td:nth-child(2) { width: 10%; } /* Canale */
+.logs-table th:nth-child(3), .logs-table td:nth-child(3) { width: 22%; } /* Evento */
+.logs-table th:nth-child(4), .logs-table td:nth-child(4) { width: 13%; } /* Sender */
+.logs-table th:nth-child(5), .logs-table td:nth-child(5) { width: 13%; } /* Receiver */
+.logs-table th:nth-child(6), .logs-table td:nth-child(6) {
+    width: 32%;
+    white-space: normal;
+}
+
+
+.logs-table th {
+    background-color: #242424;
+    color: #00ffcc;
+    font-weight: bold;
+    text-transform: uppercase;
+    border-bottom: 2px solid #00ffcc;
+    letter-spacing: 0.5px;
+}
+
+.logs-table tr:hover {
+    background-color: #222222;
+}
+
+.logs-table code {
+    font-family: monospace;
+    background-color: #282828;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #ffffff;
+}
+
+.channel-info { color: #3498db; font-weight: bold; }
+.channel-warning { color: #f1c40f; font-weight: bold; }
+.channel-error { color: #e74c3c; font-weight: bold; }

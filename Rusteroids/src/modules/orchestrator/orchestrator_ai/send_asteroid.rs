@@ -5,6 +5,7 @@ use common_game::protocols::orchestrator_planet::{OrchestratorToPlanet, PlanetTo
 use common_game::utils::ID;
 use std::fmt::format;
 use common_game::protocols::orchestrator_explorer::OrchestratorToExplorer;
+use common_game::logging::{LogEvent, Participant, ActorType, EventType, Channel, Payload};
 
 pub fn send_asteroid_impl(orch: &Orchestrator, target: ID) {
     let planet_channels_guard = orch.planet_channels.read().unwrap();
@@ -24,15 +25,25 @@ pub fn send_asteroid_impl(orch: &Orchestrator, target: ID) {
             match rocket {
                 Some(_rocket) => {
                     let log_msg = format!("AsteroidAck from Planet #{} with rocket", planet_id);
-                    //println!("{}", planet_id);
-                    orch.add_log(log_msg);
+                    orch.add_log(log_msg.clone());
                     map_guard.increase_count(target, Counts::Rockets);
+
+
+                    let mut payload = Payload::new();
+                    payload.insert("message".into(), format!("Asteroide distrutto dal pianeta #{}.", planet_id));
+
+                    orch.add_structured_log(LogEvent::new(
+                        Some(Participant::new(ActorType::Planet, planet_id)),
+                        None,
+                        EventType::InternalPlanetAction,
+                        Channel::Info,
+                        payload,
+                    ));
                 }
                 None => {
                     let log_msg = format!("AsteroidAck from Planet #{} !! NO ROCKET !!", planet_id);
-                    //println!("{}", log_msg);
                     orch.add_log(log_msg);
-                    //AGGIUNTO INVIO MESSAGGIO PER UCCIDERE L'EXPLORER, VA BENE QUA?
+
                     let explorer_to_kill = {
                         let ep_guard = orch.explorer_planet.read().unwrap();
                         ep_guard.iter()
@@ -45,6 +56,17 @@ pub fn send_asteroid_impl(orch: &Orchestrator, target: ID) {
                             let _ = tx_orch_to_exp.send(OrchestratorToExplorer::KillExplorer);
                             println!("Pianeta #{} distrutto: Explorer #{} eliminato.\n", target, exp_id);
                             orch.add_log(format!("Pianeta #{} distrutto: Explorer #{} eliminato.", target, exp_id));
+
+
+                            let mut payload = Payload::new();
+                            payload.insert("message".into(), format!("Explorer #{} è morto sul pianeta #{}.", exp_id, target));
+
+                            orch.add_structured_log(LogEvent::self_directed(
+                                Participant::new(ActorType::Explorer, exp_id),
+                                EventType::InternalExplorerAction,
+                                Channel::Info,
+                                payload,
+                            ));
                         }
                     }
 
@@ -55,8 +77,19 @@ pub fn send_asteroid_impl(orch: &Orchestrator, target: ID) {
                     match kill_ack {
                         PlanetToOrchestrator::KillPlanetResult { planet_id } => {
                             let log_msg = format!("Killed Planet #{}", planet_id);
-                            //println!("{}",log_msg);
-                            orch.add_log(log_msg);
+                            orch.add_log(log_msg.clone());
+
+
+                            let mut payload = Payload::new();
+                            payload.insert("message".into(), format!("Il pianeta #{} è stato distrutto.", planet_id));
+
+                            orch.add_structured_log(LogEvent::new(
+                                None,
+                                Some(Participant::new(ActorType::Planet, planet_id)),
+                                EventType::InternalPlanetAction,
+                                Channel::Info,
+                                payload,
+                            ));
                         }
                         _ => {}
                     }

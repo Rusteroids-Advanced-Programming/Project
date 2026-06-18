@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Rusteroids Logs</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="logs-body">
+
+<h1 class="logs-title">LOGS</h1>
+
+<table class="logs-table">
+    <thead>
+    <tr>
+        <th>TIMESTAMP</th>
+        <th>CANALE</th>
+        <th>EVENTO</th>
+        <th>SENDER</th>
+        <th>RECEIVER</th>
+        <th>MESSAGGIO</th>
+    </tr>
+    </thead>
+    <tbody id="log-rows">
+    </tbody>
+</table>
+
+<script>
+    async function loadStructuredLogs() {
+        try {
+            const response = await fetch('/api/structured-logs');
+            const logs = await response.json();
+            const tbody = document.getElementById('log-rows');
+
+            tbody.innerHTML = logs.reverse().map(log => {
+                const date = new Date(log.timestamp * 1000).toLocaleTimeString();
+                let channelClass = 'channel-info';
+                if(log.channel.includes('Warning')) channelClass = 'channel-warning';
+                if(log.channel.includes('Error')) channelClass = 'channel-error';
+
+                return `
+                        <tr>
+                            <td>[${date}]</td>
+                            <td class="${channelClass}">${log.channel}</td>
+                            <td>${log.event_type}</td>
+                            <td><code>${log.sender}</code></td>
+                            <td><code>${log.receiver}</code></td>
+                            <td>${log.message}</td>
+                        </tr>
+                    `;
+            }).join('');
+        } catch (err) {
+            console.error("Errore nel caricamento dei log:", err);
+        }
+    }
+
+    loadStructuredLogs();
+    setInterval(loadStructuredLogs, 2000);
+</script>
+</body>
+</html>

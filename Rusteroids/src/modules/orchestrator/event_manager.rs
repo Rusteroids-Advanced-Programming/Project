@@ -13,6 +13,7 @@ use crossbeam_channel::{Receiver, Sender};
 use rand::Rng;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use common_game::logging::{ActorType, Channel, EventType, LogEvent, Participant, Payload};
 use crate::modules::explorer_utils::explorer::ExplorerBehaviour;
 use crate::modules::orchestrator::handler_explorer_ai::HandlerExplorer;
 
@@ -30,9 +31,36 @@ impl ManageEvents for Orchestrator {
             if rng.random_bool(asteroid_probability) {
                 let log_msg = format!("Sending asteroid to {}", target);
                 //println!("{}",log_msg);
-                self.add_log(log_msg);
+                self.add_log(log_msg.clone());
                 self.send_asteroid(target);
+
+                let mut payload = Payload::new();
+                payload.insert("message".into(), log_msg);
+                payload.insert("type".into(), "asteroid".into());
+
+                self.add_structured_log(LogEvent::new(
+                    Some(Participant::new(ActorType::Orchestrator, 0u32)), // Sender (Orchestrator ha ID 0)
+                    Some(Participant::new(ActorType::Planet, target)),  // Receiver (Il pianeta bersaglio)
+                    EventType::MessageOrchestratorToPlanet,
+                    Channel::Info,
+                    payload,
+                ));
             } else {
+                let log_msg = format!("Sending sunray to {}", target);
+                //self.add_log(log_msg.clone());
+
+                let mut payload = Payload::new();
+                payload.insert("message".into(), log_msg);
+                payload.insert("type".into(), "sunray".into());
+
+                self.add_structured_log(LogEvent::new(
+                    Some(Participant::new(ActorType::Orchestrator, 0u32)),
+                    Some(Participant::new(ActorType::Planet, target)),
+                    EventType::MessageOrchestratorToPlanet,
+                    Channel::Info,
+                    payload,
+                ));
+
                 self.send_sunray(target);
             }
 
@@ -178,6 +206,18 @@ impl ExplorerListener {
                     let base_guard = self.explorer.get_base();
                     *base_guard.current_planet_id.write().unwrap() = planet_id;
 
+                    let log_msg = format!("Explorer #{} è atterrato sul pianeta #{}.", explorer_id, planet_id);
+                    let mut payload = Payload::new();
+                    payload.insert("message".into(), log_msg);
+
+                    orch_guard.add_structured_log(LogEvent::new(
+                        Some(Participant::new(ActorType::Explorer, explorer_id)),
+                        Some(Participant::new(ActorType::Planet, planet_id)),
+                        EventType::MessageExplorerToPlanet,
+                        Channel::Info,
+                        payload,
+                    ));
+
                     //check che l'expl non sia andato su un pianeta esploso nel frattempo
                     let stats_guard = orch_guard.stats_map.read().unwrap();
                     let planet_stats = stats_guard.get(&planet_id);
@@ -205,7 +245,19 @@ impl ExplorerListener {
                     explorer_id,
                     generated,
                 } => {
-                    if generated.is_ok() {
+                    if let Ok(risorsa_estratta) = &generated {
+                        let log_res = format!("Explorer #{} ha estratto: {:?}.", explorer_id, risorsa_estratta);
+                        let mut payload = Payload::new();
+                        payload.insert("message".into(), log_res);
+                        payload.insert("resource_type".into(), format!("{:?}", risorsa_estratta));
+
+                        self.orch.read().unwrap().add_structured_log(LogEvent::self_directed(
+                            Participant::new(ActorType::Explorer, explorer_id),
+                            EventType::InternalExplorerAction,
+                            Channel::Info,
+                            payload,
+                        ));
+
                         let (tx, _, _, _) = self.explorer_channels.read().unwrap().clone();
                         tx.send(OrchestratorToExplorer::BagContentRequest).unwrap();
                     } else {
@@ -217,8 +269,18 @@ impl ExplorerListener {
                     explorer_id,
                     generated,
                 } => {
-                    if generated.is_ok() {
-                        println!("Crafting eseguito");
+                    if let Ok(oggetto_craftato) = &generated {
+                        let log_craft = format!("Explorer #{} ha craftato: {:?}.", explorer_id, oggetto_craftato);
+                        println!("{}", log_craft);
+                        let mut payload = Payload::new();
+                        payload.insert("message".into(), log_craft);
+                        payload.insert("crafted_item".into(), format!("{:?}", oggetto_craftato));
+                        self.orch.read().unwrap().add_structured_log(LogEvent::self_directed(
+                            Participant::new(ActorType::Explorer, explorer_id),
+                            EventType::InternalExplorerAction,
+                            Channel::Info,
+                            payload,
+                        ));
 
                         let (tx, _, _, _) = self.explorer_channels.read().unwrap().clone();
                         tx.send(OrchestratorToExplorer::BagContentRequest).unwrap();
@@ -250,6 +312,16 @@ impl ExplorerListener {
                     //explorer_planet_lock.remove(&explorer_id);
 
                     orch_guard.add_log(format!("ALERT: Esploratore #{} è morto.", explorer_id));
+
+                    let mut payload = Payload::new();
+                    payload.insert("message".into(), format!("Explorer #{} è morto.", explorer_id));
+
+                    orch_guard.add_structured_log(LogEvent::self_directed(
+                        Participant::new(ActorType::Explorer, explorer_id),
+                        EventType::InternalExplorerAction,
+                        Channel::Info,
+                        payload,
+                    ));
 
                     break;
                 }
