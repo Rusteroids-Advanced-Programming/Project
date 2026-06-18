@@ -40,6 +40,8 @@ const gameInterface = document.getElementById('game-interface')!;
 const btnStartGame = document.getElementById('btn-start-game')!;
 const diffButtons = document.querySelectorAll('.btn-diff');
 
+const planetsInput = document.getElementById('planets-count') as HTMLInputElement;
+
 const gameOverScreen = document.getElementById('game-over-screen')!;
 const btnRestart = document.getElementById('btn-restart')!;
 
@@ -330,13 +332,26 @@ diffButtons.forEach(button => {
         const target = e.currentTarget as HTMLButtonElement;
         const difficulty = target.getAttribute('data-diff')!;
 
-        console.log(`Difficoltà inizializzata: ${difficulty}`);
+        let planetsCount = parseInt(planetsInput.value, 10);
+
+        if (isNaN(planetsCount)) {
+            planetsCount = 30;
+        } else {
+            if (planetsCount < 7) planetsCount = 7;
+            if (planetsCount > 50) planetsCount = 50;
+        }
+
+        console.log(`Difficoltà inizializzata: ${difficulty}, Pianeti richiesti: ${planetsCount}`);
 
         try {
             await fetch('/start-game', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ difficulty })
+
+                body: JSON.stringify({
+                    difficulty,
+                    planets_count: planetsCount
+                })
             });
         } catch (err) {
             console.error("Errore sincronizzazione backend:", err);

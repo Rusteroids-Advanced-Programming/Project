@@ -13,6 +13,7 @@ use crate::modules::read_galaxy::galaxy_generator::generate_galaxy_file;
 #[derive(Deserialize)]
 pub struct StartGamePayload {
     pub difficulty: String,
+    pub planets_count: Option<u32>,
 }
 
 #[derive(serde::Serialize)]
@@ -24,10 +25,6 @@ pub struct StructuredLogDTO {
     pub channel: String,
     pub message: String,
 }
-
-
-
-
 
 pub async fn start_game(
     State(orch): State<Arc<RwLock<Orchestrator>>>,
@@ -42,10 +39,14 @@ pub async fn start_game(
         _ => 1,
     };
 
-    println!(" Difficoltà scelta : {} ({})", payload.difficulty, diff_u8);
+    let mut num_planets = payload.planets_count.unwrap_or(30);
+    if num_planets < 7 { num_planets = 7; }
+    if num_planets > 50 { num_planets = 50; }
 
-    if let Err(e) = generate_galaxy_file(30) {
-        eprintln!("=== ERRORE CRITICO: Impossibile generare galaxy-initialization.txt: {:?} ===", e);
+    println!(" Difficoltà scelta : {} ({}) | Pianeti generati: {}", payload.difficulty, diff_u8, num_planets);
+
+    if let Err(e) = generate_galaxy_file(num_planets as usize) {
+        eprintln!("ERRORE: Impossibile generare galaxy-initialization.txt con {} pianeti: {:?}", num_planets, e);
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     }
 
@@ -61,7 +62,7 @@ pub async fn start_game(
 
     let orch_for_run = orch.clone();
     std::thread::spawn(move || {
-        println!("=== SYSTEM: Thread di simulazione dell'Orchestrator AVVIATO ===");
+        println!("Thread di simulazione dell'Orchestrator AVVIATO");
         orch_for_run.read().expect("Lock Orchestrator poisoned in run thread").run();
     });
 

@@ -1,3 +1,11 @@
+//! Defines the [`Explorer`] trait: the core run-loop and message-handling
+//! contract shared by all explorer implementations.
+//!
+//! An explorer is driven entirely by messages coming from the orchestrator
+//! (see [`OrchestratorToExplorer`]). It starts paused, waits for an explicit
+//! start/kill signal, then enters a loop that dispatches each incoming
+//! message to the matching handler on [`ExplorerBase`].
+
 use std::sync::{Arc, RwLockReadGuard, RwLockWriteGuard};
 use common_game::components::resource::{BasicResource, ComplexResourceRequest};
 use common_game::protocols::orchestrator_explorer::{ExplorerToOrchestrator, OrchestratorToExplorer};
@@ -5,18 +13,28 @@ use crossbeam_channel::select_biased;
 use crate::modules::explorer_utils::explorer_ai::ExplorerAI;
 use crate::modules::explorer_utils::explorer_base::ExplorerBase;
 use crate::modules::explorer_utils::handlers::AIHandlers;
-use crate::modules::manual_explorer::bag_type::DummyBag;
+use crate::modules::explorer_utils::bag_type::DummyBag;
 
 const ERROR_ORCH_DISCONNECTED: &'static str = "Orchestrator disconnected from explorer";
 
+/// Shared behaviour for every explorer type.
+///
+/// Implementors must provide read/write access to their [`ExplorerBase`]
+/// (shared state and orchestrator channels) and to their [`DummyBag`]
+/// (resource inventory). The trait then supplies the default run-loop
+/// (`run`) and startup gate (`wait_for_start`) that drive the explorer.
 pub trait Explorer {
-    
+
     fn get_base (&self) -> RwLockReadGuard<ExplorerBase>;
     fn get_base_mut(&self) -> RwLockWriteGuard<ExplorerBase>;
-    
+
     fn get_dummy_bag_mut(&self) -> RwLockWriteGuard<DummyBag>;
     fn get_dummy_bag(&self) -> RwLockReadGuard<DummyBag>;
-    
+
+    /// Main entry point: blocks waiting for a start signal, then runs the
+    /// explorer's message loop until it is killed or the orchestrator
+    /// disconnects. `container` supplies the AI-specific callbacks invoked
+    /// by each [`ExplorerBase`] handler (e.g. `kill_handler`).
     fn run(&self, container: Arc<dyn AIHandlers> ) -> Result<(), String> {
         let kill = self.wait_for_start()?;
         if kill {
@@ -32,7 +50,6 @@ pub trait Explorer {
 
         loop {
             println!("Explorer {} entered main loop", self.get_base().explorer_id);
-            // Se è morto, si esce dal loop
             if !*self.get_base().alive.read().unwrap() {
                 println!("Explorer {} detected death, exiting...", self.get_base().explorer_id);
                 return Ok(());
@@ -72,6 +89,7 @@ pub trait Explorer {
                 Ok(OrchestratorToExplorer::CombineResourceRequest {
                        to_generate: _to_generate,
                    }) => {
+                    // Not implemented yet.
                     let _request: ComplexResourceRequest;
                     // match to_generate {
                     //     ComplexResourceType::Dolphin => { request = ComplexResourceRequest::Dolphin() }
@@ -89,17 +107,21 @@ pub trait Explorer {
                 Err(_) => {
                     return Err(ERROR_ORCH_DISCONNECTED.to_string());
                 }
+                // Variant not handled yet: will panic if received.
                 Ok(OrchestratorToExplorer::StopExplorerAI) => todo!(),
             }
         }
     }
 
+    /// Blocks until the orchestrator sends either `StartExplorerAI` or
+    /// `KillExplorer`. Any other message received while waiting is treated
+    /// as an implicit reset (acknowledged, then waiting continues).
+    /// Returns `Ok(true)` if killed before starting, `Ok(false)` once
+    /// started, or `Err` if the orchestrator channel disconnects.
     fn wait_for_start(&self) -> Result<bool, String> {
         loop {
             select_biased! {
-                // orch messages
                 recv(self.get_base().from_orchestrator) -> msg => match msg {
-                    // if `Start` is received, return false
                     Ok(OrchestratorToExplorer::StartExplorerAI) => {
                         self.get_base().to_orchestrator
                             .send(ExplorerToOrchestrator::StartExplorerAIResult {
@@ -113,7 +135,7 @@ pub trait Explorer {
                     Ok(OrchestratorToExplorer::KillExplorer) => {
                         let base_lock = self.get_base();
                         let mut alive_lock = base_lock.alive.write().unwrap();
-                        *alive_lock = false; // aggiunto per visaulizer
+                        *alive_lock = false; // marks explorer as dead before acking, so the visualizer reflects it immediately
                         self.get_base().to_orchestrator
                             .send(ExplorerToOrchestrator::KillExplorerResult { explorer_id: self.get_base().explorer_id })
                             .map_err(|_| ERROR_ORCH_DISCONNECTED.to_string())?;
@@ -132,10 +154,13 @@ pub trait Explorer {
             }
         }
     }
-    
+
     fn handle_explorer(&self);
 
     fn all_tasks_finished(&self) -> bool;
 }
 
+/// Marker trait combining everything a concrete explorer needs to be
+/// usable by the orchestrator: the message loop ([`Explorer`]), the AI
+/// callbacks ([`AIHandlers`]), and thread-safety bounds.
 pub trait ExplorerBehaviour: Explorer + AIHandlers + Send + Sync{}

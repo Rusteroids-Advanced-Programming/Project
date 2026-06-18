@@ -3,6 +3,8 @@ use common_game::components::resource::{
     BasicResourceType, Combinator, ComplexResource, ComplexResourceType, GenericResource,
 };
 
+/// Extracts the `BasicResourceType` out of a `GenericResource`, returning
+/// `None` if the generic resource is actually a complex one.
 pub fn _from_generic_type_to_basic(resource: GenericResource) -> Option<BasicResourceType> {
     match resource {
         GenericResource::BasicResources(res) => Some(res.get_type()),
@@ -10,6 +12,10 @@ pub fn _from_generic_type_to_basic(resource: GenericResource) -> Option<BasicRes
     }
 }
 
+/// Crafts a complex resource of the requested type using `combinator`, the two
+/// ingredients `lhs`/`rhs` and the energy taken from `cell`. Each branch
+/// unwraps the generic ingredients into the concrete types expected by the
+/// specific recipe; failures from the combinator are turned into `None`.
 pub fn _gen_complex_resource(
     combinator: &Combinator,
     complex_resource_type: ComplexResourceType,

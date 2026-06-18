@@ -1,5 +1,5 @@
-use crate::modules::manual_explorer::bag_type::DummyBag;
-use crate::modules::manual_explorer::manual_explorer::ManualExplorer;
+use crate::modules::explorer_utils::bag_type::DummyBag;
+use crate::modules::explorers::manual_explorer::manual_explorer::ManualExplorer;
 use crate::modules::orchestrator::orchestator::Orchestrator;
 use crate::modules::orchestrator::orchestrator_ai::OrchestratorAI;
 use crate::modules::read_galaxy::graph::Graph;
@@ -17,12 +17,14 @@ use common_game::logging::{ActorType, Channel, EventType, LogEvent, Participant,
 use crate::modules::explorer_utils::explorer::ExplorerBehaviour;
 use crate::modules::orchestrator::handler_explorer_ai::HandlerExplorer;
 
+/// Abstraction layer for dispatching system-wide environment events (asteroids, solar rays) to target nodes.
 pub trait ManageEvents {
     fn manage(&self) -> bool;
     fn get_target_planet(&self) -> Option<ID>;
 }
 
 impl ManageEvents for Orchestrator {
+    /// Evaluates probabilistic dice rolls to spawn cosmic hazards onto a randomly selected live planet.
     fn manage(&self) -> bool{
         let mut rng = rand::rng();
         let asteroid_probability = self.difficulty.get_ratio();
@@ -30,7 +32,6 @@ impl ManageEvents for Orchestrator {
         if let Some(target) = target {
             if rng.random_bool(asteroid_probability) {
                 let log_msg = format!("Sending asteroid to {}", target);
-                //println!("{}",log_msg);
                 self.add_log(log_msg.clone());
                 self.send_asteroid(target);
 
@@ -39,15 +40,14 @@ impl ManageEvents for Orchestrator {
                 payload.insert("type".into(), "asteroid".into());
 
                 self.add_structured_log(LogEvent::new(
-                    Some(Participant::new(ActorType::Orchestrator, 0u32)), // Sender (Orchestrator ha ID 0)
-                    Some(Participant::new(ActorType::Planet, target)),  // Receiver (Il pianeta bersaglio)
+                    Some(Participant::new(ActorType::Orchestrator, 0u32)),
+                    Some(Participant::new(ActorType::Planet, target)),
                     EventType::MessageOrchestratorToPlanet,
-                    Channel::Info,
+                    Channel::Debug,
                     payload,
                 ));
             } else {
                 let log_msg = format!("Sending sunray to {}", target);
-                //self.add_log(log_msg.clone());
 
                 let mut payload = Payload::new();
                 payload.insert("message".into(), log_msg);
@@ -57,7 +57,7 @@ impl ManageEvents for Orchestrator {
                     Some(Participant::new(ActorType::Orchestrator, 0u32)),
                     Some(Participant::new(ActorType::Planet, target)),
                     EventType::MessageOrchestratorToPlanet,
-                    Channel::Info,
+                    Channel::Debug,
                     payload,
                 ));
 
@@ -70,9 +70,9 @@ impl ManageEvents for Orchestrator {
             println!("Tutti i pianeti esplosi, gioco finito");
             false
         }
-
     }
 
+    /// Selects a random active planet identifier from the existing system registry.
     fn get_target_planet(&self) -> Option<ID> {
         let planet_vec = self.get_planet_ids_list();
         if planet_vec.len() == 0 {
@@ -83,11 +83,11 @@ impl ManageEvents for Orchestrator {
             let rand_index = rng.random_range(0..planet_vec.len());
             Some(planet_vec[rand_index])
         }
-
     }
 }
 
 #[allow(dead_code)]
+/// Asynchronous message listener running an infinite event loop over crossbeam channels linked to a single explorer.
 pub struct ExplorerListener {
     explorer_channels: Arc<
         RwLock<(
@@ -111,7 +111,7 @@ pub struct ExplorerListener {
     >,
     galaxy_graph: Arc<RwLock<Graph<ID>>>,
     explorer: Arc<dyn ExplorerBehaviour>,
-    orch: Arc<RwLock<Orchestrator>>, //aggiunto per aggiornare l'orchestrator
+    orch: Arc<RwLock<Orchestrator>>,
 }
 
 #[allow(dead_code)]
@@ -150,33 +150,18 @@ impl ExplorerListener {
         }
     }
 
+    /// Infinite polling loop blocking on incoming message structures dispatched by the explorer thread.
     pub fn explorer_event_listener(&self) {
         let (tx, rx, _tx_planet_to_expl, _rx_planet_to_expl) =
             self.explorer_channels.read().unwrap().clone();
         loop {
+            // Block until a new network payload arrives on the crossbeam channel receiver
             let msg = rx.recv().unwrap();
             match msg {
                 ExplorerToOrchestrator::NeighborsRequest {
                     explorer_id,
                     current_planet_id,
                 } => {
-                    // println!("Received neighbors request from explorer #{}", explorer_id);
-                    // let mut neighbours = Vec::new();
-                    // for node in &self.galaxy_graph.read().unwrap().nodes {
-                    //     let guard = node.read().unwrap();
-                    //     if guard.value == current_planet_id {
-                    //         for n in &guard.adjacent_nodes {
-                    //             neighbours.push(n.read().unwrap().value);
-                    //         }
-                    //     }
-                    // }
-                    //
-                    // println!("Neighbors 2: {:?}", neighbours);
-                    // tx.send(OrchestratorToExplorer::NeighborsResponse {
-                    //     neighbors: neighbours,
-                    // })
-                    // .unwrap();
-                    // println!("Neighbors response sent");
                     self.orch.read().unwrap().get_explorer_neighbours(explorer_id, current_planet_id)
                 }
                 ExplorerToOrchestrator::TravelToPlanetRequest {
@@ -194,15 +179,13 @@ impl ExplorerListener {
                     explorer_id,
                     planet_id,
                 } => {
-                    //aggiunto per aggiornare orchestrator
-
                     let orch_guard = self.orch.read().unwrap();
                     orch_guard
                         .explorer_planet
                         .write()
                         .unwrap()
                         .insert(explorer_id, planet_id);
-                    
+
                     let base_guard = self.explorer.get_base();
                     *base_guard.current_planet_id.write().unwrap() = planet_id;
 
@@ -218,7 +201,7 @@ impl ExplorerListener {
                         payload,
                     ));
 
-                    //check che l'expl non sia andato su un pianeta esploso nel frattempo
+                    // Verify if the landing destination was eliminated by an asteroid during the transit sequence
                     let stats_guard = orch_guard.stats_map.read().unwrap();
                     let planet_stats = stats_guard.get(&planet_id);
 
@@ -236,7 +219,6 @@ impl ExplorerListener {
                     explorer_id: _,
                     bag_content,
                 } => {
-                    //aggiunto per aggiornare orchestrator
                     let mut bag_guard = self.explorer.get_dummy_bag_mut();
                     *bag_guard = bag_content;
                 }
@@ -254,7 +236,7 @@ impl ExplorerListener {
                         self.orch.read().unwrap().add_structured_log(LogEvent::self_directed(
                             Participant::new(ActorType::Explorer, explorer_id),
                             EventType::InternalExplorerAction,
-                            Channel::Info,
+                            Channel::Debug,
                             payload,
                         ));
 
@@ -278,7 +260,7 @@ impl ExplorerListener {
                         self.orch.read().unwrap().add_structured_log(LogEvent::self_directed(
                             Participant::new(ActorType::Explorer, explorer_id),
                             EventType::InternalExplorerAction,
-                            Channel::Info,
+                            Channel::Debug,
                             payload,
                         ));
 
@@ -294,23 +276,11 @@ impl ExplorerListener {
                 }
 
                 ExplorerToOrchestrator::KillExplorerResult { explorer_id } => {
-                    // DA FIXARE NON VA UN CAZZO
-
                     if let Ok(mut alive_lock) = self.explorer.get_base().alive.write() {
                         *alive_lock = false;
                     }
 
                     let orch_guard = self.orch.read().unwrap();
-
-                    // if let Some(orch_explorer) = orch_guard.explorers.get(&explorer_id) {
-                    //     let base_guard = orch_explorer.get_base();
-                    //     let mut alive_status = base_guard.alive.write().unwrap();
-                    //     *alive_status = false;
-                    // }
-
-                    let mut explorer_planet_lock = orch_guard.explorer_planet.write().unwrap();
-                    //explorer_planet_lock.remove(&explorer_id);
-
                     orch_guard.add_log(format!("ALERT: Esploratore #{} è morto.", explorer_id));
 
                     let mut payload = Payload::new();
@@ -323,6 +293,7 @@ impl ExplorerListener {
                         payload,
                     ));
 
+                    // Break the listener loop and shut down this specific handling thread
                     break;
                 }
                 msg => {
@@ -335,13 +306,13 @@ impl ExplorerListener {
         }
     }
 
+    /// Orchestrates destination handshakes, supporting both initial actor spawning or active planetary relocation steps.
     pub fn send_explorer_event_manager(
         &self,
         planet_id: ID,
         explorer_id: ID,
         current_planet_id: Option<ID>,
     ) {
-        //se current_planet_id == None allora si sta spawnando l'explorer
         let explorer_channels_guard = self.explorer_channels.read().unwrap();
         let (_expl_sender, _expl_receiver, tx_planet_to_expl, _rx_planet_to_expl) =
             &*explorer_channels_guard;
@@ -364,7 +335,7 @@ impl ExplorerListener {
                 new_sender: tx_planet_to_expl.clone(),
             });
 
-        //IN  CASO IL PIANETA DI DESTINAZIONE SIA ESPLOSO FINCHé L'EXPLORER TENTA DI RAGGIUNGERLO
+        // Fail-safe handling if the target planet instance collapses while receiving the incoming transaction
         if let Err(e) = incoming_expl_msg_sent {
             println!("Error sending incoming explorer message: {:?}", e);
             return;
@@ -386,7 +357,6 @@ impl ExplorerListener {
                         match current_planet_id {
                             Some(current_planet_id) => {
                                 if self.send_outgoing_explorer(explorer_id, current_planet_id) {
-                                    //--> mandiamo a planet_id = dst_planet, ma noi dobbiamo mandare a current planet, mandando outgoing allo stesso pianeta in cui siamo gia, mandando tuttoa puttane
                                     let (tx2, _rx2, _, _rx_planet_to_expl) =
                                         &*explorer_channels_guard;
                                     let (_, _, expl_to_planet) = planet_channels;
@@ -394,7 +364,7 @@ impl ExplorerListener {
                                         sender_to_new_planet: Some(expl_to_planet.clone()),
                                         planet_id,
                                     })
-                                    .unwrap();
+                                        .unwrap();
                                 }
                             }
                             None => {
@@ -404,26 +374,25 @@ impl ExplorerListener {
                                     sender_to_new_planet: Some(expl_to_planet.clone()),
                                     planet_id,
                                 })
-                                .unwrap();
+                                    .unwrap();
                             }
                         }
                     }
                     Err(e) => {
                         println!("Error while trying to move explorer: {:?}", e);
-                        // false
                     }
                 }
             }
             _msg => {
                 println!("Received unexpected msg while waiting incoming explorer response");
-                // false
             }
         }
     }
 
+    /// Asks the actor's current location to clear and unregister its local explorer state data tracking.
     fn send_outgoing_explorer(&self, explorer_id: ID, planet_id: ID) -> bool {
         let planet_channels_guard = self.planet_channels.read().unwrap();
-        let planet_channels = planet_channels_guard.get(&planet_id).unwrap(); //_> planet che dano problemi: #6600
+        let planet_channels = planet_channels_guard.get(&planet_id).unwrap();
 
         let (tx2, rx2, _ex2) = planet_channels;
 
@@ -451,7 +420,6 @@ impl ExplorerListener {
             }
             Err(e) => {
                 println!("Explorer #{} tried to escape an exploding planet #{} and he died", explorer_id, planet_id);
-
                 false
             }
         }

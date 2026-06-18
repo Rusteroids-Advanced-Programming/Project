@@ -9,11 +9,14 @@ use rustrelli::ExplorerRequestLimit;
 use std::sync::{Arc, RwLock};
 use std::thread;
 
+#[allow(dead_code)]
+/// Trait mapping foundational bootstrap operations required to build the global galaxy cluster layout.
 pub trait Initializer {
     fn initialize(&mut self);
 }
 
 impl Initializer for Orchestrator {
+    /// Iterates through the generated topology graph nodes to build and spin up distinct planet simulation runtime hooks.
     fn initialize(&mut self) {
         self.galaxy_graph = Arc::new(RwLock::new(build_galaxy_graph()));
         let graph_guard = self.galaxy_graph.read().unwrap();
@@ -22,12 +25,12 @@ impl Initializer for Orchestrator {
 
         let mut map_guard = self.stats_map.write().unwrap();
 
-        //hardcoded types for planets, we'll need to change this
         for node in &graph_guard.nodes {
             let tmp = node.read().unwrap();
 
             let mut planet_wrapper: Planet;
 
+            // Allocate localized crossbeam channel triples tracking communication boundaries for each individual planet thread
             let (tx1, rx1): (Sender<OrchestratorToPlanet>, Receiver<OrchestratorToPlanet>) =
                 unbounded::<OrchestratorToPlanet>();
             let (tx2, rx2) = unbounded::<PlanetToOrchestrator>();
@@ -36,11 +39,8 @@ impl Initializer for Orchestrator {
             let planet_name: String;
             let planet_type: PlanetType;
 
-            // self.planet_map.add_planet(planet_tmp.planet, 1);
-
+            /// Local hardcoded blueprint mapping to retrieve matching ingredient vectors depending on the planet's internal type index.
             fn get_known_resources(planet_id: u32) -> (Vec<String>, Vec<String>) {
-                //FUNZIONA MA CAMBIO PIÙ AVANTI FA SCHIFO
-                // rimettere tutti i pianeti
                 match planet_id {
                     1 => (
                         vec![
@@ -50,9 +50,9 @@ impl Initializer for Orchestrator {
                             "Silicon".into(),
                         ],
                         vec![],
-                    ), // Rust-eze
-                    2 => (vec!["Carbon".into()], vec![]), // CIUC
-                    3 => (vec!["Oxygen".into()], vec![]), // TRIP
+                    ),
+                    2 => (vec!["Carbon".into()], vec![]),
+                    3 => (vec!["Oxygen".into()], vec![]),
                     4 => (
                         vec![
                             "Carbon".into(),
@@ -61,7 +61,7 @@ impl Initializer for Orchestrator {
                             "Silicon".into(),
                         ],
                         vec!["Water".into()],
-                    ), // Crabtorio
+                    ),
                     5 => (
                         vec!["Hydrogen".into()],
                         vec![
@@ -72,7 +72,7 @@ impl Initializer for Orchestrator {
                             "Dolphin".into(),
                             "AIPartner".into(),
                         ],
-                    ), // Rusty-crab            // Esempio per Rusty-Crab
+                    ),
                     6 => (
                         vec!["Carbon".into()],
                         vec![
@@ -83,7 +83,7 @@ impl Initializer for Orchestrator {
                             "Dolphin".into(),
                             "AIPartner".into(),
                         ],
-                    ), // Enterprise
+                    ),
                     7 => (
                         vec![
                             "Carbon".into(),
@@ -92,16 +92,16 @@ impl Initializer for Orchestrator {
                             "Silicon".into(),
                         ],
                         vec![],
-                    ), // Rustrelli
-                    // 8 => (vec!["Carbon".into()], vec![]), // Rusteroids
-                    _ => (vec![],vec![]), //estremamente provvisorio
+                    ),
+                    _ => (vec![],vec![]),
                 }
             }
             let planet_id = &tmp.value;
 
-            //TEST TEMPORANEO: RIMETTERE %7
-            let virtual_id = ((planet_id - 1) % 7) + 1; // dal 7 in poi ricominciano i pianeti in ordine
+            // Normalize layout boundaries by recycling planet configurations sequentially via a virtual modulo offset
+            let virtual_id = ((planet_id - 1) % 7) + 1;
 
+            // Polymorphic structure generation wrapping unique foreign planet creation crate factories
             match virtual_id {
                 1 => {
                     planet_wrapper = rust_eze::create_planet(*planet_id, rx1, tx2, ex2);
@@ -139,14 +139,6 @@ impl Initializer for Orchestrator {
                     planet_name = "Rustrelli".to_string()
                 }
 
-                //remember to redo the numbers when we put new planets
-                // 8 => {
-                //     planet_wrapper =
-                //         rusteroid_planet::rusteroids::Rusteroids::new(*planet_id, 2, rx1, tx2, ex2)
-                //             .unwrap()
-                //             .planet;
-                //     planet_name = "Rusteroids".to_string()
-                // }
                 _ => {
                     planet_wrapper =
                         rustrelli::create_planet(*planet_id, rx1, tx2, ex2, ExplorerRequestLimit::None);
@@ -159,6 +151,7 @@ impl Initializer for Orchestrator {
 
             planet_type = planet_wrapper.planet_type();
 
+            // Run the individual planet simulation inside an isolated thread sandbox protected from external panic termination cascades
             let handle = thread::spawn(move || {
                 let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     let res = planet_wrapper.run();
@@ -171,6 +164,7 @@ impl Initializer for Orchestrator {
                 }));
             });
 
+            // Store the initialized communication endpoints and join handles into the central orchestrator registries
             self.planet_channels
                 .write()
                 .unwrap()

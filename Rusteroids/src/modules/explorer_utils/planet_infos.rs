@@ -3,6 +3,8 @@ use common_game::components::planet::PlanetType;
 use common_game::components::resource::{BasicResourceType, ComplexResourceType};
 use common_game::utils::ID;
 
+/// Holds the resource-related information gathered about a planet,
+/// distinguishing between raw basic resources and processed complex ones.
 #[derive(Debug)]
 pub struct PlanetInfos {
     // pub id: ID,

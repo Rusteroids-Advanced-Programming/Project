@@ -5,8 +5,12 @@ use common_game::components::resource::{
 };
 use common_game::components::resource::ResourceType::Basic;
 use crate::modules::explorer_utils::resource_types::resource_type_to_inner;
-use crate::modules::manual_explorer::bag_type::DummyBag;
+use crate::modules::explorer_utils::bag_type::DummyBag;
 
+/// Builds a `ComplexResourceRequest` for the given complex resource type, using
+/// `lhs` and `rhs` as the two ingredients required by its recipe. Each branch
+/// unwraps the generic resources into the specific basic/complex variants
+/// expected by that recipe.
 pub fn complex_resource_type_to_request(
     complex_type: &ComplexResourceType,
     lhs: GenericResource,
@@ -46,6 +50,8 @@ pub fn complex_resource_type_to_request(
 }
 
 
+/// Returns the recipe (pair of ingredients) needed to craft the given
+/// complex resource. Ingredients can be either basic or other complex resources.
 pub fn get_recipe(complex_resource_type: &ComplexResourceType) -> (ResourceType, ResourceType) {
     let result: (ResourceType, ResourceType);
     match complex_resource_type {
@@ -89,13 +95,19 @@ pub fn get_recipe(complex_resource_type: &ComplexResourceType) -> (ResourceType,
     result
 }
 
+/// Returns the list of basic resources still missing from `bag` in order to
+/// craft `complex_resource_type`. Resources already owned are reused (each unit
+/// only once) thanks to the recursive helper that tracks virtual consumption.
 pub fn get_shopping_list(bag: &DummyBag, complex_resource_type: &ComplexResourceType) -> Vec<BasicResourceType> {
     let mut consumed = HashMap::new();
     get_shopping_list_helper(bag, complex_resource_type, &mut consumed)
 }
 
 
-// Helper ricorsivo che tiene traccia dei consumi
+/// Recursive helper for `get_shopping_list`. `consumed` tracks how many units
+/// of each resource have already been virtually taken from the bag during this
+/// traversal, so the same physical item is never counted twice when it appears
+/// as an ingredient on multiple branches of the recipe tree.
 fn get_shopping_list_helper(
     bag: &DummyBag,
     complex_resource_type: &ComplexResourceType,
@@ -107,13 +119,14 @@ fn get_shopping_list_helper(
     let mut needed_left: Vec<BasicResourceType> = Vec::new();
     let mut needed_right: Vec<BasicResourceType> = Vec::new();
 
-    // -- Controllo Lato Sinistro (LHS) --
+    // -- LHS check --
     let lhs_consumed = *consumed.get(&lhs).unwrap_or(&0);
     if bag.get_resource_quantity(&lhs) > lhs_consumed {
-        // Abbiamo la risorsa nella borsa e non l'abbiamo ancora consumata tutta: la usiamo.
+        // We still have an unused unit in the bag: virtually consume it.
         consumed.insert(lhs.clone(), lhs_consumed + 1);
     } else {
-        // Non abbiamo la risorsa (o l'abbiamo esaurita virtualmente), calcoliamo i sotto-requisiti.
+        // Not available (or already exhausted virtually): recurse on sub-recipe
+        // if complex, otherwise add the basic resource to the shopping list.
         let left_inner = resource_type_to_inner(lhs.clone());
         if let Err(complex_res) = left_inner {
             let mut tmp = get_shopping_list_helper(bag, &complex_res, consumed);
@@ -123,13 +136,11 @@ fn get_shopping_list_helper(
         }
     }
 
-    // -- Controllo Lato Destro (RHS) --
+    // -- RHS check (same logic as LHS) --
     let rhs_consumed = *consumed.get(&rhs).unwrap_or(&0);
     if bag.get_resource_quantity(&rhs) > rhs_consumed {
-        // La usiamo
         consumed.insert(rhs.clone(), rhs_consumed + 1);
     } else {
-        // La cerchiamo
         let right_inner = resource_type_to_inner(rhs.clone());
         if let Err(complex_res) = right_inner {
             let mut tmp = get_shopping_list_helper(bag, &complex_res, consumed);
@@ -209,12 +220,18 @@ fn get_shopping_list_helper(
 //     result
 // }
 
-// Funzione pubblica invariata nella firma
+/// Returns the ordered list of complex resources that need to be crafted in
+/// order to obtain `complex_resource_type`. The order is bottom-up: each
+/// resource appears after all of its complex dependencies, so the list can be
+/// consumed sequentially by a crafter.
 pub fn get_complex_shopping_list(bag: &DummyBag, complex_resource_type: &ComplexResourceType) -> Vec<ComplexResourceType> {
     let mut consumed = HashMap::new();
     get_complex_shopping_list_helper(bag, complex_resource_type, &mut consumed)
 }
 
+/// Recursive helper for `get_complex_shopping_list`. Same virtual-consumption
+/// trick as `get_shopping_list_helper`: items already in the bag are not
+/// scheduled for crafting, and each unit is only reused once.
 fn get_complex_shopping_list_helper(
     bag: &DummyBag,
     complex_resource_type: &ComplexResourceType,
@@ -226,11 +243,12 @@ fn get_complex_shopping_list_helper(
     let mut needed_left: Vec<ComplexResourceType> = Vec::new();
     let mut needed_right: Vec<ComplexResourceType> = Vec::new();
 
-    // -- Controllo Lato Sinistro (LHS) --
+    // -- LHS check --
     let lhs_consumed = *consumed.get(&lhs).unwrap_or(&0);
     if bag.get_resource_quantity(&lhs) > lhs_consumed {
         consumed.insert(lhs.clone(), lhs_consumed + 1);
     } else {
+        // Only recurse on complex ingredients: basic ones are not part of this list.
         let left_inner = resource_type_to_inner(lhs.clone());
         if let Err(complex_res) = left_inner {
             let mut tmp = get_complex_shopping_list_helper(bag, &complex_res, consumed);
@@ -238,7 +256,7 @@ fn get_complex_shopping_list_helper(
         }
     }
 
-    // -- Controllo Lato Destro (RHS) --
+    // -- RHS check (same logic as LHS) --
     let rhs_consumed = *consumed.get(&rhs).unwrap_or(&0);
     if bag.get_resource_quantity(&rhs) > rhs_consumed {
         consumed.insert(rhs.clone(), rhs_consumed + 1);
@@ -253,7 +271,7 @@ fn get_complex_shopping_list_helper(
     result.append(&mut needed_left);
     result.append(&mut needed_right);
 
-    // Aggiungiamo la risorsa finale
+    // Push the current resource last so dependencies come before it.
     result.push(complex_resource_type.clone());
 
     result

@@ -2,6 +2,7 @@ use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
+/// Parses a galaxy map text file line-by-line, splitting space-separated tokens into a matrix of unsigned 32-bit integers.
 pub fn read_galaxy_file() -> Result<Vec<Vec<u32>>, Box<dyn Error>> {
     let path = "./galaxy-initialization.txt";
     let file = File::open(path);
@@ -10,6 +11,7 @@ pub fn read_galaxy_file() -> Result<Vec<Vec<u32>>, Box<dyn Error>> {
     match file {
         Err(e) => Err(Box::new(e)),
         Ok(file) => {
+            // Wrap the file inside a stream buffer to drastically reduce system-call performance bottlenecks
             let reader = BufReader::new(file);
 
             for line in reader.lines() {
@@ -18,12 +20,14 @@ pub fn read_galaxy_file() -> Result<Vec<Vec<u32>>, Box<dyn Error>> {
                         return Err(Box::new(e));
                     }
                     Ok(line) => {
+                        // Clean, split white-spaces, and extract numerical components out of the string buffer row
                         let parts: Vec<u32> = line
                             .as_str()
                             .trim()
                             .split_whitespace()
                             .map(|s| s.parse::<u32>().unwrap())
                             .collect();
+
                         result.push(parts);
                     }
                 }

@@ -1,6 +1,7 @@
 use crate::modules::explorer_utils::tasks::{Task, TaskState};
 use crate::modules::explorer_utils::tasks::TaskState::{Finished, Pending};
 
+/// Tracks the progression of visiting a specified number of planets.
 pub struct TotalPlanetsVisitedTask {
     state: TaskState,
     visited: usize,
@@ -22,10 +23,12 @@ impl Task<usize> for TotalPlanetsVisitedTask {
 }
 
 impl TotalPlanetsVisitedTask {
+    /// Creates a new task instance, initializing the number of visited planets to 1.
     pub fn new(to_visit: usize) -> Self {
         Self {state: Pending, visited: 1, to_visit}
     }
 
+    /// Increments visited planets count and checks if the entire task is completed.
     pub fn update_progress(&mut self) {
         self.visited += 1;
         if self.visited >= self.to_visit {

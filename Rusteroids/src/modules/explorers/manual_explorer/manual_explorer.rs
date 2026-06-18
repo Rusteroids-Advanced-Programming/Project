@@ -1,4 +1,4 @@
-use crate::modules::manual_explorer::bag_type::{BagType, DummyBag};
+use crate::modules::explorer_utils::bag_type::{BagType, DummyBag};
 use common_game::components::resource::{BasicResource, BasicResourceType, ComplexResource, ComplexResourceRequest, ComplexResourceType, GenericResource};
 use common_game::protocols::orchestrator_explorer::{
     ExplorerToOrchestrator, OrchestratorToExplorer,
@@ -16,53 +16,37 @@ use crate::modules::explorer_utils::explorer_ai::ExplorerAI;
 use crate::modules::explorer_utils::explorer_base::ExplorerBase;
 use crate::modules::explorer_utils::handlers::AIHandlers;
 
+/// Interface to wire runtime planet-specific communication crossbeam channels.
 pub trait ExplorerPlanetCommunication {
     fn set_to_planet_sender(&mut self, to_planet: RwLock<Option<Sender<ExplorerToPlanet>>>);
     fn set_from_planet_receiver(&mut self, from_planet: RwLock<Option<Receiver<PlanetToExplorer>>>);
 }
 
 impl AIHandlers for ManualExplorer {
-    fn start_ai_handler(&self) {
+    fn start_ai_handler(&self) {}
 
-    }
+    fn reset_ai_handler(&self) {}
 
-    fn reset_ai_handler(&self) {
-    }
+    fn kill_handler(&self) {}
 
-    fn kill_handler(&self) {
-    }
+    fn generate_resource_handler(&self, result: &Option<&BasicResource>) {}
 
-    fn generate_resource_handler(&self, result: &Option<&BasicResource>) {
-    }
+    fn combine_resource_handler(&self, result: &Result<&ComplexResource, &(String, GenericResource, GenericResource)>) {}
 
-    fn combine_resource_handler(&self, result: &Result<&ComplexResource, &(String, GenericResource, GenericResource)>) {
-    }
-
-    fn move_to_planet_handler(&self) {
-
-    }
+    fn move_to_planet_handler(&self) {}
 }
 
+/// A manual, terminal-driven CLI explorer allowing users to dispatch extraction,
+/// crafting, and routing commands directly.
 pub struct ManualExplorer {
-    // pub explorer_id: ID,
-    // pub bag: RwLock<BagType>,
-    pub dummy_bag: RwLock<DummyBag>, // aggiunto per visualizer
-    // pub current_planet_id: RwLock<ID>,
-    // pub stopped: RwLock<bool>,
-    // pub alive: RwLock<bool>,
-    // pub from_orchestrator: Receiver<OrchestratorToExplorer>,
-    // pub to_orchestrator: Sender<ExplorerToOrchestrator<DummyBag>>,
-    // pub to_planet: RwLock<Option<Sender<ExplorerToPlanet>>>,
-    // pub from_planet: RwLock<Option<Receiver<PlanetToExplorer>>>,
-    // pub neighbours: RwLock<Vec<ID>>,
-    // pub basic_resources: RwLock<HashSet<BasicResourceType>>,
-    // pub combinations: RwLock<HashSet<ComplexResourceType>>,
+    pub dummy_bag: RwLock<DummyBag>,
     pub base: RwLock<ExplorerBase>
 }
 
 impl ManualExplorer {
     const ERROR_ORCH_DISCONNECTED: &'static str = "Orchestrator disconnected from explorer";
 
+    /// Instantiates the manual explorer shell linked to orchestrator communication streams.
     pub fn new(
         explorer_id: ID,
         current_planet_id: ID,
@@ -83,13 +67,10 @@ impl ManualExplorer {
         ));
 
         Self {
-
             dummy_bag: RwLock::new(DummyBag::new(HashMap::new(), HashMap::new())),
             base
         }
     }
-
-
 }
 
 impl ExplorerPlanetCommunication for ManualExplorer {
@@ -124,6 +105,7 @@ impl Explorer for ManualExplorer {
         self.dummy_bag.read().unwrap()
     }
 
+    /// Launches an interactive CLI evaluation block blocking on user stdin input strings.
     fn handle_explorer(&self) {
         loop {
             sleep(Duration::from_millis(2000));
@@ -148,8 +130,6 @@ impl Explorer for ManualExplorer {
                     println!("HAI INSERITO {}", tmp);
                     let input2: u8 = tmp.trim().parse().expect("Please insert a valid option");
 
-
-
                     match input2 {
                         1 => {
                             println!("Choose Basic Resource:");
@@ -158,6 +138,7 @@ impl Explorer for ManualExplorer {
                             let guard = base_guard.basic_resources.read().unwrap();
                             let mut choices: HashMap<usize, &BasicResourceType> = HashMap::new();
 
+                            // Construct a transient index mapping to convert raw CLI choices into strongly typed identifiers
                             for (i, resource) in guard.iter().enumerate() {
                                 options_map.insert(i, resource);
                                 options_list.push_str(&format!("[{}] {:?}\n", i + 1, resource));
@@ -238,6 +219,7 @@ impl Explorer for ManualExplorer {
         }
     }
 
+    /// Always returns `false` since human players determine their own completion objectives.
     fn all_tasks_finished(&self) -> bool {
         false
     }

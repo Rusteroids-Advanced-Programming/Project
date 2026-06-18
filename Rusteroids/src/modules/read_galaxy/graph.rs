@@ -4,6 +4,7 @@ use std::fmt;
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug)]
+/// A thread-safe graph node encapsulating its core payload value and list of connected adjacent neighbors.
 pub struct Node<T> {
     pub value: T,
     pub adjacent_nodes: Vec<Arc<RwLock<Node<T>>>>,
@@ -24,6 +25,7 @@ impl<T: PartialEq> PartialEq for Node<T> {
     }
 }
 
+/// A concurrent directed graph structure utilizing shared atomic pointers and read-write locks for safe cross-thread traversal.
 pub struct Graph<T> {
     pub nodes: Vec<Arc<RwLock<Node<T>>>>,
 }
@@ -32,6 +34,7 @@ impl<T: PartialEq> Graph<T> {
     pub fn new() -> Graph<T> {
         Graph { nodes: Vec::new() }
     }
+
     pub fn add_node(&mut self, value: T) -> Arc<RwLock<Node<T>>> {
         let rc = Arc::new(RwLock::new(Node::new(value)));
         self.nodes.push(rc.clone());
@@ -42,15 +45,17 @@ impl<T: PartialEq> Graph<T> {
         node.write().unwrap().adjacent_nodes.push(other);
     }
 
+    /// Completely removes a target node from the graph allocation space, scrubbing its instances from all adjacency lists.
     pub fn remove_node(&mut self, value: T) {
         // 1. Remove the node itself from the graph's main node list
         if let Some(index) = self.nodes.iter().position(|node| node.read().unwrap().value == value) {
             self.nodes.remove(index);
         }
 
-        // 2. Safely remove any references to this node from all remaining nodes' adjacency lists
+        // 2. Safely remove any references to this node from all remaining nodes' adjacency lists to prevent memory leaks
         for node in &self.nodes {
             let mut guard = node.write().unwrap();
+            // Retain only neighbor pointers whose underlying internal value does not match the removed payload
             guard.adjacent_nodes.retain(|adj_node| {
                 adj_node.read().unwrap().value != value
             });
@@ -63,7 +68,6 @@ impl<T: PartialEq> Graph<T> {
                 return true
             }
         }
-
         false
     }
 
@@ -88,6 +92,7 @@ impl<T: PartialEq> Graph<T> {
 }
 
 impl<T: fmt::Display> fmt::Debug for Graph<T> {
+    /// Formats the layout into an adjacency list text visualization, avoiding infinitely looping on cyclic paths.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut visited = HashSet::new();
 
@@ -96,6 +101,7 @@ impl<T: fmt::Display> fmt::Debug for Graph<T> {
         for node in &self.nodes {
             let node_ptr = Arc::as_ptr(node);
 
+            // Deduplicate pointers to verify each physical heap allocation is processed exactly once
             if !visited.insert(node_ptr) {
                 continue;
             }
@@ -122,15 +128,11 @@ mod test_graph {
     fn test_graph() {
         let mut graph = Graph::new();
         let a = graph.add_node("A");
-        let b = graph.add_node("B");
+        let _b = graph.add_node("B");
         let c = graph.add_node("C");
 
         graph.add_adj_node(&a, c);
         graph.remove_node("B");
-        assert_eq!("Graph {
-  A -> [C]
-  C -> []
-}
-", format!("{:?}", graph));
+        assert_eq!("Graph {\n  A -> [C]\n  C -> []\n}\n", format!("{:?}", graph));
     }
 }

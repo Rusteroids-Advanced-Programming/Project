@@ -20,20 +20,21 @@ use crate::modules::explorer_utils::resource_types::get_all_complex_resource_typ
 use crate::modules::explorer_utils::tasks::{Task, TaskState};
 use crate::modules::explorers::common_tasks::craft_all::CraftAllTask;
 use crate::modules::explorers::explorer_2::tasks::visit_all_edges::TotalEdgesVisitedTask;
-use crate::modules::manual_explorer::bag_type::{BagType, DummyBag};
+use crate::modules::explorer_utils::bag_type::{BagType, DummyBag};
 
 
 pub type MissingBasicResources = HashMap<BasicResourceType, usize>;
 pub type MissingComplexResources = HashMap<ComplexResourceType, usize>;
 
-//STEP DECISIONE EXPLORER
-// - 1 check se il pianeta corrente può craftare
+//DECISION TREE:
+// - 1 check if current planet can craft
 // - 2 check bag
-// - 3 check se ho la recipe per craftare e in base a quello che manca nella task
-// - 4 Se posso craftare crafto, se no check se posso estrarre, se puo estrae
-// - 5 scelgo di muovermi sul pianeta che permette o il crafting o l'estrazione di risorse che servono a completare la task
+// - 3 check if I have the ingredients to craft
+// - 4 if I can craft I do it, else I check if I can extract
+// - 5 Move to a planet which permits to craft missing complex resources or to extract basic resources needed to craft
 
-
+/// An AI-driven explorer variant focused on path/edge exploration while completing
+/// full crafting checklists across different planetary systems.
 pub struct Explorer2 {
     pub base: RwLock<ExplorerBase>,
     pub tot_edges_task: RwLock<TotalEdgesVisitedTask>,
@@ -44,6 +45,7 @@ pub struct Explorer2 {
 }
 
 impl Explorer2 {
+    /// Initializes a new explorer instance with a specific targeted edge traversal quota.
     pub fn new(
         explorer_id: ID,
         current_planet_id: ID,
@@ -73,6 +75,7 @@ impl Explorer2 {
         }
     }
 
+    /// Computes the exact missing raw materials based on unfulfilled crafting requirements.
     fn get_missing_basic_resources(&self) -> MissingBasicResources {
         let mut missing_resources: MissingBasicResources = HashMap::new();
         let base_guard = self.get_base();
@@ -82,11 +85,8 @@ impl Explorer2 {
         let task_state = self.craft_all_task.read().unwrap().get_progress();
 
         for (resource, already_crafted) in task_state {
-            // println!("DEBUG: Calculating resources needed to craft {:?}", resource);
-
             if !already_crafted {
                 let vec_missing = get_shopping_list(&dummy_bag, &resource);
-                // println!("DEBUG: resources needed to craft {:?} SHOPPING LIST: {:?}", resource, vec_missing);
 
                 for missing in vec_missing {
                     let node = missing_resources.get_mut(&missing);
@@ -110,13 +110,12 @@ impl Explorer2 {
             else {
                 *qty = 0;
             }
-
         }
 
         missing_resources
     }
 
-
+    /// Calculates missing complex resources needed to complete the overall game task checklist.
     fn get_missing_complex_resources(&self) -> MissingComplexResources {
         let mut missing_resources: MissingComplexResources = HashMap::new();
         let base_guard = self.get_base();
@@ -151,10 +150,8 @@ impl Explorer2 {
         missing_resources
     }
 
-
+    /// Chooses a neighboring destination based on resource matching and paths not recently traversed.
     fn change_planet(&self, missing_resources: MissingBasicResources) {
-        // println!("DEBUG: Change planet");
-
         let explorer_map_guard = self.explorer_map.read().unwrap();
         let base_guard = self.get_base();
         let neighbours = base_guard.neighbours.read().unwrap();
@@ -165,12 +162,10 @@ impl Explorer2 {
 
         let mut next_planet: ID = neighbours[get_random_index(neighbours.len())];
 
-        //check vicini inesplorati
         for neighbour in &*neighbours {
             let planet_infos = explorer_map_guard.infos.get(&neighbour);
             match planet_infos {
                 None => {
-                    // println!("DEBUG: No planet infos for {:?}", neighbour);
                     next_planet = *neighbour;
                     break;
                 }
@@ -190,7 +185,7 @@ impl Explorer2 {
                     }
 
                     if !basic_planet_found {
-                        //implementare check degli ingredienti e delle complex che mancano
+                        // Context-dependent: complex requirements check can be integrated here
                     }
                 }
             }
@@ -200,12 +195,10 @@ impl Explorer2 {
         *prev_guard = base_guard.current_planet_id.read().unwrap().clone();
 
         base_guard.travel_request(next_planet);
-        // println!("DEBUG: Changing planet to {}", next_planet);
     }
 
-
+    /// Evaluates current available execution cells to either trigger combination procedures or gather base ingredients.
     fn decision_tree(&self) {
-
         let base_guard = self.get_base();
         let mut num_cells = base_guard.ask_available_cells();
         let missing_basic_resources = self.get_missing_basic_resources();
@@ -216,31 +209,22 @@ impl Explorer2 {
         if num_cells == 0 {
             self.change_planet(missing_basic_resources);
         }
-
         else {
             let explorer_map_guard = self.explorer_map.read().unwrap();
             let planet_infos = explorer_map_guard.infos.get(&base_guard.current_planet_id.read().unwrap()).unwrap();
             let mut resource_target: Option<BasicResourceType> = None;
 
-            // let combinations = base_guard.combinations.read().unwrap();
-
-            //println!("DECISION_TREE: CI SONO {:?} CELLE DI ENERGIA", num_cells);
-            //println!("BASIC RESOURCES GENERABILI NEL PAINETA {}: {:?}", base_guard.current_planet_id.read().unwrap(), planet_infos.basic_resources);
             println!("COMPLEX RESOURCES CRAFTABILI NEL PIANETA {}: {:?}", base_guard.current_planet_id.read().unwrap(), planet_infos.complex_resources);
 
             while num_cells >= 1 {
-                //println!("DEBUG: Celle disponibili su pianeta {:?}: {:?}", base_guard.current_planet_id.read().unwrap(), num_cells);
-
                 sleep(Duration::from_millis(1000));
                 let task_state = self.craft_all_task.read().unwrap().get_progress();
 
-                //println!("LEN COMPLEX RESOURCES: {}", planet_infos.complex_resources.len());
                 if planet_infos.complex_resources.len() > 0 {
                     for combination in &planet_infos.complex_resources {
                         println!("CONTROLLO SE HO GIà CRAFTATO {:?}", combination);
                         let qty_needed = missing_complex_resources.get(&combination).unwrap_or(&0);
                         if qty_needed > &0 {
-                            //if !task_state.get(combination).unwrap() {
                             num_cells = base_guard.ask_available_cells();
                             println!("DEBUG: (DI NUOVO) Celle disponibili {:?}", num_cells);
                             if num_cells > 0 {
@@ -254,13 +238,11 @@ impl Explorer2 {
                 for (resource, qty) in &missing_basic_resources {
                     if qty > &0 && planet_infos.basic_resources.contains(resource) {
                         resource_target = Some(*resource);
-                        //println!("VOGLIO ESTRARRE {:?}", resource_target);
                         break;
                     }
                 }
 
                 if let Some(resource_target_inner) = resource_target {
-                    //println!("STO PER GENERARE {:?}", resource_target_inner);
                     let gen_res = base_guard.generate_resource(resource_target_inner, |result| self.generate_resource_handler(result));
 
                     if let Err(_) = gen_res {
@@ -277,13 +259,6 @@ impl Explorer2 {
             self.change_planet(missing_basic_resources);
         }
     }
-
-
-    // let bag_guard = base_guard.bag.read().unwrap();
-    // let combinations_guard = base_guard.combinations.read().unwrap();
-    // if combinations_guard.is_empty() {
-    // }
-    // }
 }
 
 impl AIHandlers for Explorer2 {
@@ -293,9 +268,7 @@ impl AIHandlers for Explorer2 {
 
     fn kill_handler(&self) {}
 
-    fn generate_resource_handler(&self, result: &Option<&BasicResource>) {
-        // println!("DEBUG: Generated resource {:?}", result);
-    }
+    fn generate_resource_handler(&self, result: &Option<&BasicResource>) {}
 
     fn combine_resource_handler(&self, result: &Result<&ComplexResource, &(String, GenericResource, GenericResource)>) {
         match result {
@@ -307,7 +280,9 @@ impl AIHandlers for Explorer2 {
         }
     }
 
+    /// Handles map tracking updates when the explorer successfully switches location, evaluating if a new edge connection was traversed.
     fn move_to_planet_handler(&self) {
+        // Evaluate if the path link between previous and current node has already been explored
         if !self.explorer_map.read().unwrap().is_edge_visited(&self.prev_planet.read().unwrap(), &self.get_base().current_planet_id.read().unwrap()) {
             self.tot_edges_task.write().unwrap().update_progress();
             println!("Aggiungo arco visitato {} - {}", self.prev_planet.read().unwrap().clone(), self.get_base().current_planet_id.read().unwrap().clone());
@@ -336,6 +311,7 @@ impl Explorer for Explorer2 {
         self.dummy_bag.read().unwrap()
     }
 
+    /// Execution framework processing discovery tracking, environment scanning, and edge-prioritized traveling loops.
     fn handle_explorer(&self) {
         loop {
             sleep(Duration::from_millis(1000));
@@ -359,7 +335,6 @@ impl Explorer for Explorer2 {
                 let planet_infos = PlanetInfos::new(base_guard.basic_resources.read().unwrap().clone(), base_guard.combinations.read().unwrap().clone());
                 explorer_map_guard.planet_discovery(*current_planet_id, planet_infos, base_guard.neighbours.read().unwrap().clone());
             }
-
             else {
                 base_guard.ask_for_neighbours();
             }
@@ -397,7 +372,6 @@ impl Explorer for Explorer2 {
                             TaskState::Pending => {
                                 let base_guard = self.get_base();
                                 sleep(Duration::from_millis(1000));
-                                // let map_guard = self.explorer_map.read().unwrap();
 
                                 let neighbours = base_guard.neighbours.read().unwrap();
                                 if neighbours.len() == 0 {
@@ -410,6 +384,7 @@ impl Explorer for Explorer2 {
                                     let mut next_planet = neighbours[get_random_index(neighbours.len())];
                                     let current_planet = base_guard.current_planet_id.read().unwrap();
 
+                                    // Dynamic routing strategy: Scan connected routes to prioritize unvisited edges first
                                     for neig in neighbours.iter() {
                                         let explorer_map_guard = self.explorer_map.read().unwrap();
                                         if ! explorer_map_guard.is_edge_visited(&current_planet, neig) {
@@ -420,13 +395,10 @@ impl Explorer for Explorer2 {
                                     }
 
                                     drop(neighbours);
-
-                                    //println!("VADO SU PIANETA : {:?} e intanto sono su Pianeta #{}", next_planet, current_planet);
                                     drop(current_planet);
-                                    // drop(base_guard);
+
                                     *self.prev_planet.write().unwrap() = self.get_base().current_planet_id.read().unwrap().clone();
                                     self.get_base().travel_request(next_planet);
-                                    // base_guard.travel_request(next_planet);
                                 }
 
                                 let task2_guard = self.tot_edges_task.read().unwrap();
@@ -441,51 +413,10 @@ impl Explorer for Explorer2 {
             drop(task_guard);
 
             self.decision_tree();
-
-            // println!("neighbours of explorer #{}: {:?}", base_guard.explorer_id, base_guard.neighbours.read().unwrap());
-            //
-            // println!("EXPLORER #{} MAP = {:?}", self.get_base().explorer_id, explorer_map_guard);
-
-            // let planet_ids = base_guard.neighbours.read().unwrap();
-
-
-            //TASK VISITE TOTALI
-
-            // let current_node = explorer_map_guard.graph.get_node(&current_planet_id).unwrap();
-            // let current_node_guard = current_node.read().unwrap();
-            // let planet_ids = &current_node_guard.adjacent_nodes;
-            //
-            //
-            //
-            // if planet_ids.len() > 0 {
-            //     match self.tot_visits_task.read().unwrap().get_state() {
-            //         TaskState::Finished => {
-            //             println!("LAVORO FINITO CAPO");
-            //             break;
-            //         }
-            //         TaskState::Pending => {
-            //             let rand_index = get_random_index(planet_ids.len());
-            //             let target_planet = &planet_ids[rand_index];
-            //
-            //             println!("Explorer #{} is starting to think", self.get_base().explorer_id);
-            //             self.get_base().to_orchestrator.send(ExplorerToOrchestrator::TravelToPlanetRequest {
-            //                 explorer_id: self.get_base().explorer_id,
-            //                 current_planet_id: current_planet_id.clone(),
-            //                 dst_planet_id: target_planet.read().unwrap().value,
-            //             }).unwrap();
-            //         }
-            //         _ => {
-            //             println!("Task uncompletable for explorer #{}", self.get_base().explorer_id);
-            //         }
-            //     }
-            // }
-            //
-            // else {
-            //     println!("Explorer #{} non ha vicini in cui spostarsi", self.get_base().explorer_id);
-            // }
         }
     }
 
+    /// Evaluates if both item-crafting checklists and topological road-mapping objectives are finished.
     fn all_tasks_finished(&self) -> bool {
         let craft_all_state = self.craft_all_task.read().unwrap().get_state().clone();
         let num_edges_state = self.tot_edges_task.read().unwrap().get_state().clone();

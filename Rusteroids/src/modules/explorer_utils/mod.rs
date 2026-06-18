@@ -7,3 +7,4 @@ pub mod explorer_map;
 pub mod planet_infos;
 pub mod resource_types;
 pub mod recipes;
+pub mod bag_type;

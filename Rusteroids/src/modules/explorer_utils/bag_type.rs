@@ -8,13 +8,15 @@ use std::hash::Hash;
 
 #[allow(dead_code)]
 #[derive(Debug)]
+/// A lightweight snapshot of the inventory state, storing only quantities rather than full item objects.
 pub struct DummyBag {
-    pub complex: HashMap<ComplexResourceType, usize>, //rese pub, va bene?
+    pub complex: HashMap<ComplexResourceType, usize>,
     pub basic: HashMap<BasicResourceType, usize>,
 }
 
 #[allow(dead_code)]
 impl DummyBag {
+    /// Creates a new `DummyBag` counter instance.
     pub fn new(
         basic: HashMap<BasicResourceType, usize>,
         complex: HashMap<ComplexResourceType, usize>,
@@ -73,6 +75,7 @@ impl DummyBag {
         }
     }
 
+    /// Checks if a resource type is inside the bag by matching against specific item methods.
     pub fn is_in_bag(&self, resource_type: &ResourceType) -> bool {
         let mut check: bool = false;
 
@@ -110,31 +113,18 @@ impl DummyBag {
 
         check
     }
-
-    /*  pub fn get_all_resources_as_strings(&self) -> Vec<String> {//aggiunta in caso per non rendere complex e basic public
-        let mut list = Vec::new();
-        for (res_type, count) in &self.basic {
-            for _ in 0..*count {
-                list.push(format!("{:?}", res_type));
-            }
-        }
-        for (res_type, count) in &self.complex {
-            for _ in 0..*count {
-                list.push(format!("{:?}", res_type));
-            }
-        }
-        list
-    }*/
 }
 
 #[allow(dead_code)]
 #[derive(Debug)]
+/// The concrete inventory structure storing actual collections of basic and complex game instances.
 pub struct BagType {
     complex: HashMap<ComplexResourceType, Vec<ComplexResource>>,
     basic: HashMap<BasicResourceType, Vec<BasicResource>>,
 }
 
 #[allow(dead_code)]
+/// Trait used to map concrete resource structs to their corresponding enum identifiers.
 trait ResourceCustom<T> {
     fn get_custom_type(&self) -> T;
 }
@@ -166,6 +156,7 @@ impl BagType {
         }
     }
 
+    /// Aggregates item vector lengths to map resource types to their numerical counts.
     pub fn to_dummy(&self) -> DummyBag {
         let mut basic_map = HashMap::new();
         for (key, value) in &self.basic {
@@ -180,6 +171,7 @@ impl BagType {
         DummyBag::new(basic_map, complex_map)
     }
 
+    /// Generic helper to insert any typed item inside its respective collection vector.
     fn add_to_bag<U: Hash + Eq, T: ResourceCustom<U>>(resource: T, map: &mut HashMap<U, Vec<T>>) {
         let key = resource.get_custom_type();
 
@@ -214,6 +206,7 @@ impl BagType {
         Self::remove_from_bag(complex_res, &mut self.complex)
     }
 
+    /// Verifies if both matched ingredients exist; if one is missing, it rolls back the other into the map.
     fn check_same_type_ingredients<T: Hash + Eq, U: ResourceCustom<T>>(
         res1: Option<U>,
         res2: Option<U>,
@@ -233,6 +226,7 @@ impl BagType {
         }
     }
 
+    /// Validates cross-type items, ensuring safety rollbacks occur if part of the pairing is missing.
     fn check_diff_type_ingredients(
         res1: Option<BasicResource>,
         res2: Option<ComplexResource>,

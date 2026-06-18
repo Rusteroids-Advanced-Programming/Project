@@ -1,5 +1,11 @@
+//! Implements [`ExplorerAI`] for [`ExplorerBase`]: the explorer's
+//! request/response logic for talking to its current planet (resources,
+//! combinations, neighbours, energy cells) and to the orchestrator
+//! (lifecycle and results), plus the recipe lookup used to combine
+//! resources from the explorer's bag.
+
 // use rusteroid_planet::from_generic_type_to_basic;
-use crate::modules::manual_explorer::manual_explorer::ManualExplorer;
+use crate::modules::explorers::manual_explorer::manual_explorer::ManualExplorer;
 use common_game::components::resource::{BasicResource, BasicResourceType, ComplexResource, ComplexResourceRequest, ComplexResourceType, GenericResource};
 use common_game::protocols::orchestrator_explorer::ExplorerToOrchestrator;
 use common_game::protocols::planet_explorer::{ExplorerToPlanet, PlanetToExplorer};
@@ -9,6 +15,8 @@ use std::thread::sleep;
 use std::time::Duration;
 use crate::modules::explorer_utils::explorer_base::ExplorerBase;
 
+/// Sends `msg` to the planet and waits up to 5s for a reply.
+/// Returns `None` on send failure or on timeout (planet considered unresponsive/exploded).
 fn send_message_to_planet_with_timeout(to_planet: &Sender<ExplorerToPlanet>, from_planet:&Receiver<PlanetToExplorer>, msg: ExplorerToPlanet) -> Option<PlanetToExplorer> {
     let res_sent = to_planet.send(msg);
     match res_sent {
@@ -30,6 +38,10 @@ fn send_message_to_planet_with_timeout(to_planet: &Sender<ExplorerToPlanet>, fro
     }
 }
 
+/// AI-driven behaviour an explorer exposes to the orchestrator and to the
+/// planet it's currently on: lifecycle (start/reset/kill/move), querying
+/// planet state (resources, combinations, neighbours, energy cells), and
+/// producing/combining resources into the explorer's bag.
 pub trait ExplorerAI {
     fn start_ai <F> (&self, custom_handler: F) where F : Fn();
     fn reset_ai <F> (&self, custom_handler: F) where F : Fn();
@@ -90,6 +102,9 @@ impl ExplorerAI for ExplorerBase {
         custom_handler();
     }
 
+    /// Switches the explorer to a new planet's channel and id, notifies the
+    /// orchestrator, then refreshes neighbours/combinations/resources for
+    /// the new planet.
     fn move_to_planet <F> (&self, to_planet: Option<Sender<ExplorerToPlanet>>, planet_id: ID, custom_handler : F) where F : Fn(){
         println!("MOVE TO_PLANET {}", planet_id);
 
@@ -145,6 +160,9 @@ impl ExplorerAI for ExplorerBase {
             .unwrap();
     }
 
+    /// Queries the current planet for its supported resources and caches
+    /// the result in `self.basic_resources`. No-op if not currently
+    /// connected to a planet, or if the planet doesn't respond in time.
     fn ask_supported_resources(&self) {
         let to_planet_guard = self.to_planet.read().unwrap();
         let from_planet_guard = self.from_planet.read().unwrap();
@@ -225,6 +243,9 @@ impl ExplorerAI for ExplorerBase {
             .unwrap();
     }
 
+    /// Queries the current planet for its supported resource combinations
+    /// and caches the result in `self.combinations`. No-op if not
+    /// currently connected to a planet, or if it doesn't respond in time.
     fn ask_combinations(&self) {
         let to_planet_guard = self.to_planet.read().unwrap();
         let from_planet_guard = self.from_planet.read().unwrap();
@@ -282,6 +303,9 @@ impl ExplorerAI for ExplorerBase {
         // }
     }
 
+    /// Asks the current planet to generate `to_generate`. On success the
+    /// resource is added to the explorer's bag; the outcome is reported
+    /// both to `custom_handler` and to the orchestrator.
     fn generate_resource <F> (&self, to_generate: BasicResourceType, custom_handler: F) -> Result<(), String>
     where F: Fn(&Option<&BasicResource>){
         let to_planet_guard = self.to_planet.read().unwrap();
@@ -346,11 +370,16 @@ impl ExplorerAI for ExplorerBase {
     }
 
 
+    /// Builds the ingredient request for `to_generate` from the explorer's
+    /// bag (see [`get_complex_resource_request`]) and asks the planet to
+    /// combine them. On success the resulting complex resource is added to
+    /// the bag; the outcome is reported to `custom_handler` and the
+    /// orchestrator.
     fn combine_resource <F> (&self, to_generate: ComplexResourceType, custom_handler: F) where F: Fn(&Result<&ComplexResource, &(String, GenericResource, GenericResource)>){
         let generate_request = self.get_complex_resource_request(to_generate);
-        
+
         println!("Combine resource request {:?}", generate_request);
-        
+
         let to_planet_guard = self.to_planet.read().unwrap();
         let from_planet_guard = self.from_planet.read().unwrap();
 
@@ -400,58 +429,58 @@ impl ExplorerAI for ExplorerBase {
                             .unwrap();
                     }
 
-                None => {}
+                    None => {}
 
                 }
             }
         }
     }
 
-        // if let Some(to_planet) = to_planet_guard.as_ref() {
-        //     if let Some(generate_request) = generate_request {
-        //         to_planet
-        //             .send(ExplorerToPlanet::CombineResourceRequest {
-        //                 explorer_id: self.explorer_id,
-        //                 msg: generate_request,
-        //             })
-        //             .unwrap();
-        //         if let Some(from_planet) = from_planet_guard.as_ref() {
-        //             let msg = from_planet.recv().unwrap();
-        //             let result: Result<(), String>;
-        //             match msg {
-        //                 PlanetToExplorer::CombineResourceResponse { complex_response } => {
-        //
-        //                     let tmp = &complex_response.as_ref();
-        //                     custom_handler(tmp);
-        //
-        //                     match complex_response {
-        //                         Ok(resource) => {
-        //                             println!("DEBUG: Combined resource successfully: {:?}", resource);
-        //                             let mut bag_guard = self.bag.write().unwrap();
-        //                             bag_guard.add_complex_resource(resource);
-        //                             result = Ok(());
-        //                         }
-        //                         Err((e, res1, res2)) => {
-        //                             println!("DEBUG: Could not generate using {:?} + {:?}: {}", res1, res2, e);
-        //
-        //                             result = Err("Couldn't combine resource".to_string());
-        //                             // self.bag.add_to_bag(ResourceType::Basic(from_generic_type_to_basic(res1).unwrap()));
-        //                             // self.bag.add_to_bag(ResourceType::Basic(from_generic_type_to_basic(res2).unwrap()));
-        //                         }
-        //                     }
-        //                 }
-        //                 msg => {
-        //                     println!("Received unexpected message: {:?} while waiting for CombineResourceResponse", msg);
-        //                     result = Err("Couldn't combine resource".to_string());
-        //                 }
-        //             }
-        //
-        //             self.to_orchestrator
-        //                 .send(ExplorerToOrchestrator::CombineResourceResponse {
-        //                     explorer_id: self.explorer_id,
-        //                     generated: result,
-        //                 })
-        //                 .unwrap();
+    // if let Some(to_planet) = to_planet_guard.as_ref() {
+    //     if let Some(generate_request) = generate_request {
+    //         to_planet
+    //             .send(ExplorerToPlanet::CombineResourceRequest {
+    //                 explorer_id: self.explorer_id,
+    //                 msg: generate_request,
+    //             })
+    //             .unwrap();
+    //         if let Some(from_planet) = from_planet_guard.as_ref() {
+    //             let msg = from_planet.recv().unwrap();
+    //             let result: Result<(), String>;
+    //             match msg {
+    //                 PlanetToExplorer::CombineResourceResponse { complex_response } => {
+    //
+    //                     let tmp = &complex_response.as_ref();
+    //                     custom_handler(tmp);
+    //
+    //                     match complex_response {
+    //                         Ok(resource) => {
+    //                             println!("DEBUG: Combined resource successfully: {:?}", resource);
+    //                             let mut bag_guard = self.bag.write().unwrap();
+    //                             bag_guard.add_complex_resource(resource);
+    //                             result = Ok(());
+    //                         }
+    //                         Err((e, res1, res2)) => {
+    //                             println!("DEBUG: Could not generate using {:?} + {:?}: {}", res1, res2, e);
+    //
+    //                             result = Err("Couldn't combine resource".to_string());
+    //                             // self.bag.add_to_bag(ResourceType::Basic(from_generic_type_to_basic(res1).unwrap()));
+    //                             // self.bag.add_to_bag(ResourceType::Basic(from_generic_type_to_basic(res2).unwrap()));
+    //                         }
+    //                     }
+    //                 }
+    //                 msg => {
+    //                     println!("Received unexpected message: {:?} while waiting for CombineResourceResponse", msg);
+    //                     result = Err("Couldn't combine resource".to_string());
+    //                 }
+    //             }
+    //
+    //             self.to_orchestrator
+    //                 .send(ExplorerToOrchestrator::CombineResourceResponse {
+    //                     explorer_id: self.explorer_id,
+    //                     generated: result,
+    //                 })
+    //                 .unwrap();
     //             }
     //         }
     //     }
@@ -502,6 +531,8 @@ impl ExplorerAI for ExplorerBase {
             .unwrap();
     }
 
+    /// Asks the current planet how many energy cells are available.
+    /// Returns 0 if not connected to a planet or on timeout.
     fn ask_available_cells(&self) -> u32 {
         let mut available = 0;
 
@@ -550,6 +581,12 @@ impl ExplorerAI for ExplorerBase {
         available
     }
 
+    /// Looks up two ingredients in the bag matching the recipe for
+    /// `complex_resource_type` and builds the corresponding request.
+    /// Returns `None` if the bag doesn't currently hold the right
+    /// ingredients. Recipes: AIPartner = Diamond + Robot, Robot = Silicon +
+    /// Life, Diamond = Carbon + Carbon, Water = Hydrogen + Oxygen,
+    /// Life = Carbon + Water, Dolphin = Water + Life.
     fn get_complex_resource_request(
         &self,
         complex_resource_type: ComplexResourceType,

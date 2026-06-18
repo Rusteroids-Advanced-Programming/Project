@@ -18,6 +18,7 @@ const menuDifficulty = document.getElementById('menu-difficulty');
 const gameInterface = document.getElementById('game-interface');
 const btnStartGame = document.getElementById('btn-start-game');
 const diffButtons = document.querySelectorAll('.btn-diff');
+const planetsInput = document.getElementById('planets-count');
 const gameOverScreen = document.getElementById('game-over-screen');
 const btnRestart = document.getElementById('btn-restart');
 function renderGalaxy(planets, explorers) {
@@ -266,12 +267,25 @@ diffButtons.forEach(button => {
     button.addEventListener('click', (e) => __awaiter(void 0, void 0, void 0, function* () {
         const target = e.currentTarget;
         const difficulty = target.getAttribute('data-diff');
-        console.log(`Difficoltà inizializzata: ${difficulty}`);
+        let planetsCount = parseInt(planetsInput.value, 10);
+        if (isNaN(planetsCount)) {
+            planetsCount = 30;
+        }
+        else {
+            if (planetsCount < 7)
+                planetsCount = 7;
+            if (planetsCount > 50)
+                planetsCount = 50;
+        }
+        console.log(`Difficoltà inizializzata: ${difficulty}, Pianeti richiesti: ${planetsCount}`);
         try {
             yield fetch('/start-game', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ difficulty })
+                body: JSON.stringify({
+                    difficulty,
+                    planets_count: planetsCount
+                })
             });
         }
         catch (err) {

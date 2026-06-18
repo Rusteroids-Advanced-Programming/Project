@@ -8,6 +8,9 @@ const ALL_BASIC_RESOURCES: [BasicResourceType; 4] = [Hydrogen, Carbon, Silicon, 
 const ALL_COMPLEX_RESOURCES: [ComplexResourceType; 6] =
     [Diamond, Life, AIPartner, Robot, Water, Dolphin];
 
+/// Returns a `Vec` containing every basic resource type, in the order declared
+/// in `ALL_BASIC_RESOURCES`. Useful when an owned, mutable collection is needed
+/// instead of the fixed-size constant array.
 pub fn _get_unbounded_basic_resource_vec() -> Vec<BasicResourceType> {
     let mut result = Vec::new();
     for resource in ALL_BASIC_RESOURCES.iter().cloned() {
@@ -16,6 +19,7 @@ pub fn _get_unbounded_basic_resource_vec() -> Vec<BasicResourceType> {
     result
 }
 
+/// Same as `_get_unbounded_basic_resource_vec`, but for complex resources.
 pub fn _get_unbounded_complex_resource_vec() -> Vec<ComplexResourceType> {
     let mut result = Vec::new();
     for resource in ALL_COMPLEX_RESOURCES.iter().cloned() {
