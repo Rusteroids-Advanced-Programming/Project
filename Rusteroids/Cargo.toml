@@ -2,11 +2,15 @@
 name = "Rusteroids"
 version = "0.1.0"
 edition = "2024"
+authors = ["Francesco Verdolin franncesco.verdolin@studenti.unitn.it"]
+description = "Alchemy Rust time based game"
+license = "MIT"
+repository = "https://github.com/Rusteroids-Advanced-Programming/Project"
+readme = "README.md"
 
 [dependencies]
 common-game = { git = "https://github.com/unitn-ap-2025/common.git", version = "3.0.0" }
 crossbeam-channel = "0.5.15"
-#rusteroid_planet = { git = "https://github.com/Rusteroids-Advanced-Programming/Planet.git"}
 rust-eze = { git = "https://github.com/Rust-eze-Advanced-Programming/pub-Rust-eze.git",  package = "pub-rust-eze"}
 ciuc = { git = "https://github.com/Pietro-Calvi/ciuc_planet.git", package = "ciuc_planet"}
 trip = { git = "https://github.com/Totally-Reliable-Imaginary-Planets/TRIP.git"}
